@@ -156,30 +156,31 @@ body {
   }
 }
 
-/* ===== 日付・日時・時間の右端アイコンを白で表示 ===== */
+/* ===== 日付・日時・時間の標準ピッカー表示に戻す ===== */
 input[type="date"],
 input[type="datetime-local"],
 input[type="time"]{
-  color-scheme: dark;
-  color: #fff;
   padding-right: 38px;
 }
 
-/* 標準のピッカーアイコンをそのまま使用し、白く表示する
-   opacity:0 にすると環境によってクリックできなくなるため使用しない */
+/* 日付・日時・時間の標準アイコンは非表示にするが、クリック領域は残す */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator{
-  opacity: 1;
+  opacity: 0;
   cursor: pointer;
-  filter: brightness(0) invert(1);
+  filter: none;
 }
 
+/* スマホで入力時に自動拡大されないよう、フォーム入力は16px以上にする */
 @media (max-width:600px){
+  input, select, textarea{
+    font-size: 16px !important;
+  }
   input[type="date"],
   input[type="datetime-local"],
   input[type="time"]{
-    padding-right: 34px;
+    padding-right: 10px;
   }
 }
 
