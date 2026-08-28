@@ -925,3 +925,31 @@ body {
 /* ===== スクロール端でピタッと停止 ===== */
 html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 #screen, .sheet { -webkit-overflow-scrolling: touch; }
+
+
+/* カレンダー：今日へ戻るボタン */
+.calendar-head{position:relative;gap:8px}
+.calendar-head .calendar-today-button{background:#fff;color:#333;border:1px solid #d7d7dc;font-weight:700;min-width:44px;padding:6px 9px}
+.calendar-head .calendar-title{flex:1;text-align:center}
+@media (max-width:600px){
+  .calendar-head .calendar-today-button{min-width:42px;padding:6px 8px;font-size:12px}
+}
+
+/* カレンダー：年・月ドロップダウン */
+.calendar-selects{display:flex;align-items:center;justify-content:center;gap:5px;flex:1;min-width:0}
+.calendar-select-wrap{position:relative;display:inline-flex;align-items:center}
+.calendar-select{appearance:none;-webkit-appearance:none;border:1px solid #d7d7dc;background:#fff;color:#333;border-radius:7px;font-size:14px;font-weight:700;height:34px;padding:0 25px 0 10px;outline:none;cursor:pointer}
+.calendar-select:focus{border-color:#9275ed;box-shadow:0 0 0 2px rgba(146,117,237,.12)}
+.month-select-wrap .calendar-select{min-width:62px}
+.calendar-select-wrap:first-child .calendar-select{min-width:78px}
+.calendar-select-arrow{position:absolute;right:8px;top:50%;transform:translateY(-55%);font-size:14px;color:#666;pointer-events:none}
+.calendar-head .calendar-nav-button{background:#fff;color:#333;border:1px solid #d7d7dc;border-radius:7px;min-width:34px;height:34px;padding:0;font-size:20px;line-height:1}
+@media(max-width:600px){
+  .calendar-head{gap:5px}
+  .calendar-selects{gap:3px}
+  .calendar-select{font-size:13px;height:32px;padding-left:8px;padding-right:22px}
+  .calendar-select-wrap:first-child .calendar-select{min-width:72px}
+  .month-select-wrap .calendar-select{min-width:57px}
+  .calendar-select-arrow{right:6px;font-size:13px}
+  .calendar-head .calendar-nav-button{min-width:31px;height:32px;font-size:18px}
+}

@@ -375,9 +375,23 @@ function calendar(){
 
  document.getElementById("screen").innerHTML=`
    <div class="calendar-head">
-     <button onclick="changeMonth(-1)">‹</button>
-     <span class="calendar-title">${y}年 ${m+1}月</span>
-     <button onclick="changeMonth(1)">›</button>
+     <button type="button" class="calendar-nav-button" onclick="changeMonth(-1)">‹</button>
+     <div class="calendar-selects">
+       <label class="calendar-select-wrap">
+         <select class="calendar-select" onchange="changeCalendarYear(this.value)">
+           ${Array.from({length:21},(_,i)=>y-10+i).map(yy=>`<option value="${yy}" ${yy===y?"selected":""}>${yy}年</option>`).join("")}
+         </select>
+         <span class="calendar-select-arrow">⌄</span>
+       </label>
+       <label class="calendar-select-wrap month-select-wrap">
+         <select class="calendar-select" onchange="changeCalendarMonth(this.value)">
+           ${Array.from({length:12},(_,i)=>i).map(mm=>`<option value="${mm}" ${mm===m?"selected":""}>${mm+1}月</option>`).join("")}
+         </select>
+         <span class="calendar-select-arrow">⌄</span>
+       </label>
+     </div>
+     <button type="button" class="calendar-today-button" onclick="goToToday()">今日</button>
+     <button type="button" class="calendar-nav-button" onclick="changeMonth(1)">›</button>
    </div>
    <div class="calendar-legend">
      <span><i class="legend-dot cal-event"></i>公演</span>
@@ -396,6 +410,31 @@ function calendar(){
    </div>`;
 }
 function changeMonth(n){state.calendarDate.setMonth(state.calendarDate.getMonth()+n);render()}
+function changeCalendarYear(year){
+  const d=new Date(state.calendarDate);
+  d.setFullYear(Number(year));
+  state.calendarDate=d;
+  const selected=new Date(state.selectedDate);
+  selected.setFullYear(Number(year));
+  state.selectedDate=selected;
+  render();
+}
+function changeCalendarMonth(month){
+  const d=new Date(state.calendarDate);
+  d.setMonth(Number(month));
+  state.calendarDate=d;
+  const selected=new Date(state.selectedDate);
+  selected.setFullYear(d.getFullYear(), Number(month), 1);
+  state.selectedDate=selected;
+  render();
+}
+function goToToday(){
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  state.calendarDate=new Date(today.getFullYear(),today.getMonth(),1);
+  state.selectedDate=new Date(today);
+  render();
+}
 function selectCalendar(k){state.selectedDate=new Date(k+"T00:00:00");render()}
 render();
 
