@@ -6,6 +6,7 @@ function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
 function dt(v){return v?v.replace("T"," "):"-"}
 function detail(k,v){return `<div class="detail"><span>${esc(k)}</span><b>${esc(v||"-")}</b></div>`}
+function urlDetail(k,v){const raw=String(v||"").trim();if(!raw)return detail(k,"");const href=/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)?raw:`https://${raw}`;return `<div class="detail"><span>${esc(k)}</span><b><a class="detail-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(raw)}</a></b></div>`}
 function title(t,back=false){
   document.getElementById("pageTitle").textContent=t;
   document.getElementById("backButton").classList.toggle("hidden",!back);
@@ -60,7 +61,7 @@ function eventDetail(){
    <h2>${esc(e.name)}</h2>
    <div class="sub">${esc(e.performers||"出演者未登録")}</div>
  </div>
- <div class="card">${detail("イベント名",e.name)}${detail("イベント種別",e.type)}${detail("出演者",e.performers)}${detail("イベントURL",e.url)}${detail("メモ",e.memo)}</div>
+ <div class="card">${detail("イベント名",e.name)}${detail("イベント種別",e.type)}${detail("出演者",e.performers)}${urlDetail("イベントURL",e.url)}${detail("メモ",e.memo)}</div>
  <div class="section"><h2>公演日</h2><span class="count">${e.performances.length}件</span></div>
  ${e.performances.map((p,i)=>`<div class="card" style="margin-bottom:8px">
    <div class="row"><b style="font-size:9px">公演 ${i+1}</b><span class="badge">${date(p.date)}</span></div>
@@ -87,8 +88,8 @@ function saveEvent(ev){ev.preventDefault();const f=new FormData(ev.target),rows=
 function deleteEvent(i){if(!confirm("イベントを削除しますか？"))return;events=events.filter(e=>e.id!=i);save(KEY.events,events);go("events")}
 function addApplication(eventId){state.returnPage="event";state.eventId=eventId;state.orderId=null;state.page="orderForm";render()}
 function editApplication(eventId,appId){state.returnPage="event";state.eventId=eventId;state.orderId=appId;state.page="orderForm";render()}
-function orderForm(){const e=events.find(x=>x.id==state.eventId);if(!e){go("events");return}const a=(e.applications||[]).find(x=>x.id==state.orderId)||{name:"",method:"抽選",start:"",end:"",status:"未応募",quantity:1,payment:"",shipping:"",memo:""};title(state.orderId?"申込・注文編集":"申込・注文登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="orderForm"><div class="card" style="margin-bottom:12px">${detail("対象イベント",e.name)}</div><div class="group"><label>名称 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：1次応募、2次応募、一般販売" value="${esc(a.name)}"></div><div class="group"><label>販売・申込方式</label><select class="input" name="method">${["抽選","先着","受注生産","通常販売"].map(x=>`<option ${x==a.method?"selected":""}>${x}</option>`).join("")}</select></div><div class="time-grid"><div class="group"><label>受付開始日時</label><input class="input" name="start" type="datetime-local" value="${esc(a.start)}"></div><div class="group"><label>受付終了日時</label><input class="input" name="end" type="datetime-local" value="${esc(a.end)}"></div></div><div class="group"><label>ステータス</label><select class="input" name="status">${["未応募","応募予定","応募済み","当選","落選","購入済み","発送済み","完了"].map(x=>`<option ${x==a.status?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>数量</label><input class="input" name="quantity" type="number" min="1" value="${a.quantity||1}"></div><div class="group"><label>支払情報</label><input class="input" name="payment" value="${esc(a.payment)}"></div><div class="group"><label>発送情報</label><input class="input" name="shipping" value="${esc(a.shipping)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(a.memo)}</textarea></div><button class="primary">保存</button></form>`;document.getElementById("orderForm").onsubmit=saveApplication}
-function saveApplication(ev){ev.preventDefault();const e=events.find(x=>x.id==state.eventId),f=new FormData(ev.target),d={name:String(f.get("name")).trim(),method:f.get("method"),start:f.get("start"),end:f.get("end"),status:f.get("status"),quantity:Number(f.get("quantity")||1),payment:String(f.get("payment")||""),shipping:String(f.get("shipping")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("名称を入力してください");return}e.applications=e.applications||[];if(state.orderId)Object.assign(e.applications.find(a=>a.id==state.orderId),d);else e.applications.push({id:id(),...d});save(KEY.events,events);state.page="event";render()}
+function orderForm(){const e=events.find(x=>x.id==state.eventId);if(!e){go("events");return}const a=(e.applications||[]).find(x=>x.id==state.orderId)||{name:"",method:"抽選",start:"",end:"",announcement:"",status:"未応募",quantity:1,payment:"",shipping:"",memo:""};title(state.orderId?"申込・注文編集":"申込・注文登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="orderForm"><div class="card" style="margin-bottom:12px">${detail("対象イベント",e.name)}</div><div class="group"><label>名称 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：1次応募、2次応募、一般販売" value="${esc(a.name)}"></div><div class="group"><label>販売・申込方式</label><select class="input" name="method">${["抽選","先着","受注生産","通常販売"].map(x=>`<option ${x==a.method?"selected":""}>${x}</option>`).join("")}</select></div><div class="time-grid"><div class="group"><label>受付開始日時</label><input class="input compact-order-date" name="start" type="datetime-local" value="${esc(a.start)}"></div><div class="group"><label>受付終了日時</label><input class="input compact-order-date" name="end" type="datetime-local" value="${esc(a.end)}"></div></div><div class="group announcement-group ${a.method==="抽選"?"":"hidden"}"><label>発表日</label><input class="input compact-order-date" name="announcement" type="date" value="${esc(a.announcement||"")}"></div><div class="group"><label>ステータス</label><select class="input" name="status">${["未応募","応募予定","応募済み","当選","落選","購入済み","発送済み","完了"].map(x=>`<option ${x==a.status?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>数量</label><input class="input" name="quantity" type="number" min="1" value="${a.quantity||1}"></div><div class="group"><label>支払情報</label><input class="input" name="payment" value="${esc(a.payment)}"></div><div class="group"><label>発送情報</label><input class="input" name="shipping" value="${esc(a.shipping)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(a.memo)}</textarea></div><button class="primary">保存</button></form>`;const form=document.getElementById("orderForm");const method=form.querySelector('[name="method"]');const announcementGroup=form.querySelector(".announcement-group");method.addEventListener("change",()=>announcementGroup.classList.toggle("hidden",method.value!=="抽選"));form.onsubmit=saveApplication}
+function saveApplication(ev){ev.preventDefault();const e=events.find(x=>x.id==state.eventId),f=new FormData(ev.target),d={name:String(f.get("name")).trim(),method:f.get("method"),start:f.get("start"),end:f.get("end"),announcement:f.get("method")==="抽選"?f.get("announcement"):"",status:f.get("status"),quantity:Number(f.get("quantity")||1),payment:String(f.get("payment")||""),shipping:String(f.get("shipping")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("名称を入力してください");return}e.applications=e.applications||[];if(state.orderId)Object.assign(e.applications.find(a=>a.id==state.orderId),d);else e.applications.push({id:id(),...d});save(KEY.events,events);state.page="event";render()}
 function deleteApplication(eid,aid){if(!confirm("この申込・注文を削除しますか？"))return;const e=events.find(x=>x.id==eid);e.applications=e.applications.filter(a=>a.id!=aid);save(KEY.events,events);render()}
 
 function productsList(){
@@ -137,7 +138,7 @@ function productForm(){
  <form class="form" id="productForm">
  <div class="group"><label>販売名 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：○○ POP UP STORE" value="${esc(p.name)}"></div>
  <div class="group"><label>販売種別</label><select class="input" name="type">${["POP UP","受注販売","通常販売"].map(x=>`<option ${x==p.type?"selected":""}>${x}</option>`).join("")}</select></div>
- <div class="time-grid"><div class="group"><label>開始日</label><input class="input" name="start" type="date" value="${esc(p.start)}"></div><div class="group"><label>終了日</label><input class="input" name="end" type="date" value="${esc(p.end)}"></div></div>
+ <div class="time-grid"><div class="group"><label>開始日</label><input class="input product-form-date" name="start" type="date" value="${esc(p.start)}"></div><div class="group"><label>終了日</label><input class="input product-form-date" name="end" type="date" value="${esc(p.end)}"></div></div>
  <div class="group"><label>会場</label><input class="input" name="venue" placeholder="POP UP会場など" value="${esc(p.venue)}"></div>
  <div class="group"><label>販売URL</label><input class="input" name="url" type="url" value="${esc(p.url)}"></div>
  <div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(p.memo)}</textarea></div>
@@ -202,6 +203,8 @@ function calendar(){
        addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status});
      if(a.end&&a.end.slice(0,10)===k)
        addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status});
+     if(a.method==="抽選"&&a.announcement===k)
+       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status});
    }));
    products.forEach(p=>{
      const type=p.type||"POP UP";
@@ -243,6 +246,7 @@ function calendar(){
      <span><i class="legend-dot cal-event"></i>公演</span>
      <span><i class="legend-dot cal-application-start"></i>受付開始</span>
      <span><i class="legend-dot cal-application-end"></i>受付終了</span>
+    <span><i class="legend-dot cal-announcement"></i>発表日</span>
      <span><i class="legend-dot cal-popup"></i>POP UP</span>
      <span><i class="legend-dot cal-order"></i>受注販売</span>
      <span><i class="legend-dot cal-schedule"></i>予定</span>

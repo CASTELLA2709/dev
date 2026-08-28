@@ -182,3 +182,16 @@ input[type="time"]::-webkit-calendar-picker-indicator{
     padding-right: 34px;
   }
 }
+
+/* ===== 今回の追加調整 ===== */
+.detail-link{color:#bdafff;text-decoration:underline;word-break:break-all}
+.detail-link:visited{color:#bdafff}
+.dot.cal-announcement,.legend-dot.cal-announcement{color:#ffd66e;background:#c69a2b}
+.event-group.cal-announcement{border-left-color:#c69a2b}
+.compact-order-date{width:135px!important;max-width:135px!important}
+.product-form-date{width:125px!important;max-width:125px!important}
+.performance .time-grid input[type="time"]{width:130px;max-width:130px}
+@media (max-width:600px){
+  .performance .time-grid input[type="time"]{width:120px;max-width:100%}
+  .compact-order-date{width:125px!important;max-width:125px!important}
+}
