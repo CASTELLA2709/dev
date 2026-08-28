@@ -575,3 +575,62 @@ body {
 .dot.cal-order::first-letter { color: #d85b8c; }
 .dot.cal-schedule::first-letter { color: #697386; }
 .dot.cal-announcement::first-letter { color: #c69a2b; }
+
+/* ===== 一覧画面の絞り込み ===== */
+.list-section{align-items:center}
+.section-actions{display:flex;align-items:center;gap:8px}
+.filter-button{border:1px solid #dfe3e8;background:#fff;color:#59616b;border-radius:8px;padding:7px 10px;font-size:10px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(50,60,90,.05)}
+.filter-button:hover,.filter-button.active{border-color:#bcaeea;color:#7057c7;background:#faf8ff}
+.filter-sheet{padding-bottom:24px}
+.filter-sheet .group{margin-top:14px}
+.filter-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:18px}
+.filter-actions button{margin:0!important}
+
+/* イベント一覧：公演日によるグループ分け */
+.event-list-block {
+  margin-bottom: 22px;
+}
+.event-list-heading {
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+.event-list-heading h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.past-events .event-list-heading h2 {
+  color: #8b8f98;
+}
+.past-events .item {
+  opacity: .82;
+}
+
+
+/* ===== イベント一覧：ブロックごとの表示/非表示 ===== */
+.section-toggle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #6f7782;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.section-toggle:hover,
+.section-toggle.open {
+  border-color: #c9bdf0;
+  background: #faf8ff;
+  color: #7057c7;
+}
+.event-list-heading .section-actions {
+  margin-left: auto;
+}
+.event-list-block .list {
+  margin-top: 0;
+}

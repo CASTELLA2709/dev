@@ -1,6 +1,6 @@
 const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1"};
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,calendarDate:new Date(),selectedDate:new Date()};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,calendarDate:new Date(),selectedDate:new Date(),filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}}};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
@@ -46,7 +46,50 @@ function newSchedule(){closeAdd();state.returnPage=state.page;state.page="schedu
 function openEvent(id){state.returnPage=state.page;state.eventId=id;state.page="event";render()}
 function home(){title("ホーム");document.getElementById("screen").innerHTML=`<div class="hero"><h2>抽選管理</h2><div class="sub">イベントを中心に、公演日と申込・注文をまとめて管理</div></div><div class="grid"><div class="card stat" onclick="go('events')"><strong>${events.length}</strong><span>イベント</span></div><div class="card stat" onclick="go('products')"><strong>${products.length}</strong><span>商品</span></div><div class="card stat"><strong>${events.reduce((n,e)=>n+(e.applications||[]).length,0)}</strong><span>申込・注文</span></div><div class="card stat" onclick="go('schedules')"><strong>${schedules.length}</strong><span>予定</span></div></div><div class="section"><h2>最近のイベント</h2><span class="count">${events.length}件</span></div>${events.length?`<div class="list">${events.slice(0,5).map(eventCard).join("")}</div>`:`<div class="empty">イベントがありません。<br>右上の＋から登録してください。</div>`}`}
 function eventCard(e){return `<div class="item" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　申込・注文 ${(e.applications||[]).length}件</p></div>`}
-function eventsList(){title("イベント一覧");document.getElementById("screen").innerHTML=`<div class="section"><h2>イベント</h2><span class="count">${events.length}件</span></div>${events.length?`<div class="list">${events.map(eventCard).join("")}</div>`:`<div class="empty">イベントがありません。</div>`}`}
+function eventsList(){
+ const f=state.filters.events;
+ const filtered=events.filter(e=>(!f.type||e.type===f.type)&&(!f.keyword||[e.name,e.performers].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
+ const today=new Date(); today.setHours(0,0,0,0);
+ const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
+ const getPerformanceDates=e=>(e.performances||[]).map(p=>p.date).filter(Boolean).map(d=>{const x=new Date(d+"T00:00:00");x.setHours(0,0,0,0);return x;});
+ const current=[],future=[],past=[];
+ filtered.forEach(e=>{
+   const dates=getPerformanceDates(e);
+   const hasCurrent=dates.some(d=>d>=today&&d<nextMonthStart);
+   const hasFuture=dates.some(d=>d>=nextMonthStart);
+   if(hasCurrent) current.push(e);
+   else if(hasFuture) future.push(e);
+   else past.push(e);
+ });
+ const nearestDate=e=>{const dates=getPerformanceDates(e);return dates.length?Math.min(...dates.map(d=>Math.abs(d-today))):Infinity};
+ current.sort((a,b)=>nearestDate(a)-nearestDate(b));
+ future.sort((a,b)=>nearestDate(a)-nearestDate(b));
+ past.sort((a,b)=>nearestDate(a)-nearestDate(b));
+ title("イベント一覧");
+
+ const visibility=state.eventSections||{current:true,future:true,past:false};
+ const toggleSection=key=>{
+   state.eventSections=state.eventSections||{current:true,future:true,past:false};
+   state.eventSections[key]=!state.eventSections[key];
+   render();
+ };
+ const block=(key,label,list,cls)=>{
+   if(!list.length)return "";
+   const open=visibility[key]!==false;
+   return `<div class="event-list-block ${cls}">
+     <div class="section event-list-heading">
+       <h2>${label}</h2>
+       <div class="section-actions">
+         <span class="count">${list.length}件</span>
+         <button class="section-toggle ${open?"open":""}" onclick="toggleEventSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button>
+       </div>
+     </div>
+     ${open?`<div class="list">${list.map(eventCard).join("")}</div>`:""}
+   </div>`;
+ };
+ window.toggleEventSection=toggleSection;
+ document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>イベント</h2><div class="section-actions"><span class="count">${filtered.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('events')">☰ 絞り込み</button></div></div>${block("current","今月の予定",current,"current-events")}${block("future","来月以降の予定",future,"future-events")}${block("past","過去の予定",past,"past-events")}${!filtered.length?`<div class="empty">${events.length?"条件に一致するイベントがありません。":"イベントがありません。"}</div>`:""}`;
+}
 function eventDetail(){
  const e=events.find(x=>x.id==state.eventId);
  if(!e){go("events");return}
@@ -92,18 +135,7 @@ function orderForm(){const e=events.find(x=>x.id==state.eventId);if(!e){go("even
 function saveApplication(ev){ev.preventDefault();const e=events.find(x=>x.id==state.eventId),f=new FormData(ev.target),d={name:String(f.get("name")).trim(),method:f.get("method"),start:f.get("start"),end:f.get("end"),announcement:f.get("method")==="抽選"?f.get("announcement"):"",status:f.get("status"),quantity:Number(f.get("quantity")||1),payment:String(f.get("payment")||""),shipping:String(f.get("shipping")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("名称を入力してください");return}e.applications=e.applications||[];if(state.orderId)Object.assign(e.applications.find(a=>a.id==state.orderId),d);else e.applications.push({id:id(),...d});save(KEY.events,events);state.page="event";render()}
 function deleteApplication(eid,aid){if(!confirm("この申込・注文を削除しますか？"))return;const e=events.find(x=>x.id==eid);e.applications=e.applications.filter(a=>a.id!=aid);save(KEY.events,events);render()}
 
-function productsList(){
- title("グッズ・販売");
- document.getElementById("screen").innerHTML=`
- <div class="section"><h2>グッズ・販売</h2><span class="count">${products.length}件</span></div>
- ${products.length?`<div class="list">${products.map(p=>`
- <div class="item" onclick="openProduct('${p.id}')">
-   <div class="row"><h3>${esc(p.name)}</h3><span class="badge">${esc(p.type||"POP UP")}</span></div>
-   <p>${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</p>
-   <p>買いたい商品 ${p.items?.length||0}件</p>
- </div>`).join("")}</div>`:
- `<div class="empty">POP UP・受注販売などがありません。<br>右上の＋から登録してください。</div>`}`;
-}
+function productsList(){const f=state.filters.products;const list=products.filter(p=>(!f.type||((p.type||"POP UP")===f.type))&&(!f.keyword||[p.name,p.venue].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));title("グッズ・販売");document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${list.length?`<div class="list">${list.map(p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><span class="badge">${esc(p.type||"POP UP")}</span></div><p>${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</p><p>買いたい商品 ${p.items?.length||0}件</p></div>`).join("")}</div>`:`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`}`}
 function openProduct(i){state.returnPage="products";state.productId=i;state.page="product";render()}
 function productDetail(){
  const p=products.find(x=>x.id==state.productId);
@@ -173,7 +205,11 @@ function deleteSaleItem(pid,index){
  const p=products.find(x=>x.id==pid);p.items.splice(index,1);save(KEY.products,products);render();
 }
 function deleteProduct(i){if(!confirm("この販売情報を削除しますか？"))return;products=products.filter(p=>p.id!=i);save(KEY.products,products);go("products")}
-function scheduleList(){title("予定");const list=schedules.map(s=>{const cls=s.type==="イベント関連"?"schedule-event":s.type==="商品関連"?"schedule-product":s.type==="申込・注文関連"?"schedule-order":"schedule-other";return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${dt(s.start)}${s.end?" ～ "+dt(s.end):""}</p></div>`}).join("");document.getElementById("screen").innerHTML=`<div class="section"><h2>予定</h2><span class="count">${schedules.length}件</span></div>${list?`<div class="schedule-list">${list}</div>`:'<div class="empty">予定がありません。</div>'}`}
+function scheduleList(){const f=state.filters.schedules;const list=schedules.filter(x=>(!f.type||x.type===f.type)&&(!f.keyword||[x.name,x.related,x.memo].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));title("予定");const html=list.map(s=>{const cls=s.type==="イベント関連"?"schedule-event":s.type==="商品関連"?"schedule-product":s.type==="申込・注文関連"?"schedule-order":"schedule-other";return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${dt(s.start)}${s.end?" ～ "+dt(s.end):""}</p></div>`}).join("");document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>予定</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('schedules')">☰ 絞り込み</button></div></div>${html?`<div class="schedule-list">${html}</div>`:`<div class="empty">${schedules.length?"条件に一致する予定がありません。":"予定がありません。"}</div>`}`}
+function openFilter(kind){const f=state.filters[kind];const configs={events:{title:"イベントの絞り込み",label:"イベント種別",options:["ライブ","舞台","イベント","その他"],placeholder:"イベント名・出演者を検索"},products:{title:"販売情報の絞り込み",label:"販売種別",options:["POP UP","受注販売","通常販売"],placeholder:"販売名・会場を検索"},schedules:{title:"予定の絞り込み",label:"予定種別",options:["イベント関連","商品関連","申込・注文関連","その他"],placeholder:"予定名・関連情報を検索"}}[kind];const old=document.getElementById("filterModal");if(old)old.remove();const div=document.createElement("div");div.id="filterModal";div.className="overlay";div.innerHTML=`<div class="sheet filter-sheet"><button class="close" onclick="closeFilter()">×</button><h2>${configs.title}</h2><div class="group"><label>${configs.label}</label><select class="input" id="filterType"><option value="">すべて</option>${configs.options.map(x=>`<option ${f.type===x?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>キーワード</label><input class="input" id="filterKeyword" placeholder="${configs.placeholder}" value="${esc(f.keyword)}"></div><div class="filter-actions"><button class="secondary" onclick="clearFilter('${kind}')">クリア</button><button class="primary" onclick="applyFilter('${kind}')">この条件で絞り込む</button></div></div>`;document.body.appendChild(div)}
+function closeFilter(){document.getElementById("filterModal")?.remove()}
+function clearFilter(kind){state.filters[kind]={type:"",keyword:""};closeFilter();render()}
+function applyFilter(kind){state.filters[kind]={type:document.getElementById("filterType").value,keyword:document.getElementById("filterKeyword").value.trim()};closeFilter();render()}
 function openSchedule(i){state.returnPage="schedules";state.scheduleId=i;state.page="schedule";render()}
 function scheduleDetail(){const s=schedules.find(x=>x.id==state.scheduleId);if(!s){go("schedules");return}title("予定詳細",true);document.getElementById("screen").innerHTML=`<div class="hero"><span class="badge">${esc(s.type)}</span><h2>${esc(s.name)}</h2></div><div class="card">${detail("開始日時",dt(s.start))}${detail("終了日時",dt(s.end))}${detail("予定種別",s.type)}${detail("関連情報",s.related)}${detail("メモ",s.memo)}</div><div class="actions"><button class="secondary" onclick="editSchedule('${s.id}')">編集</button><button class="danger" onclick="deleteSchedule('${s.id}')">削除</button></div>`}
 function editSchedule(i){state.scheduleId=i;state.returnPage="schedule";state.page="scheduleForm";render()}
