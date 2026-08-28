@@ -196,3 +196,382 @@ input[type="time"]::-webkit-calendar-picker-indicator{
   .performance .time-grid input[type="time"]{width:120px;max-width:100%}
   .compact-order-date{width:125px!important;max-width:125px!important}
 }
+
+
+/* ===== 白基調テーマ ===== */
+html, body {
+  background: #f7f8fa;
+  color: #22252a;
+}
+
+.app {
+  background: #ffffff;
+}
+
+.header {
+  background: #ffffff;
+  border-bottom-color: #e5e7eb;
+}
+
+.header h1 {
+  color: #22252a;
+}
+
+.header-btn {
+  color: #33363b;
+}
+
+.bottom-nav {
+  background: #ffffff;
+  border-top-color: #e5e7eb;
+  box-shadow: 0 -2px 10px rgba(0,0,0,.05);
+}
+
+.bottom-nav button {
+  color: #8a8f98;
+}
+
+.bottom-nav .active {
+  color: #7b61d9;
+}
+
+.sub,
+.count,
+.item p,
+.stat span,
+.group label,
+.detail span,
+.event-group div,
+.empty {
+  color: #6f757d;
+}
+
+.section h2,
+.item h3,
+.stat strong,
+.calendar-title,
+.performance-title,
+.event-group strong {
+  color: #22252a;
+}
+
+.card,
+.item {
+  background: #ffffff;
+  border-color: #e3e6ea;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+
+.badge {
+  border-color: #cfc7f3;
+  color: #7057c7;
+  background: #faf9ff;
+}
+
+.status {
+  color: #555b63;
+  background: #f1f3f5;
+}
+
+.primary {
+  background: #8a70e8;
+  color: #ffffff;
+}
+
+.secondary {
+  background: #ffffff;
+  border-color: #d9dde2;
+  color: #33373d;
+}
+
+.danger {
+  background: #fff5f5;
+  border-color: #efc7cb;
+  color: #d34f59;
+}
+
+.input {
+  background: #ffffff;
+  border-color: #d5d9df;
+  color: #22252a;
+}
+
+.input:focus {
+  border-color: #8a70e8;
+  box-shadow: 0 0 0 2px rgba(138,112,232,.12);
+}
+
+.detail {
+  border-bottom-color: #e7e9ed;
+}
+
+.performance {
+  background: #fafbfc;
+  border-color: #e1e4e8;
+}
+
+.remove {
+  color: #d34f59;
+}
+
+.calendar-head button {
+  border-color: #d8dce2;
+  background: #ffffff;
+  color: #33373d;
+}
+
+.week {
+  color: #7b8189;
+}
+
+.day {
+  background: #ffffff;
+  border-color: #e2e5e9;
+  color: #33373d;
+}
+
+.day.today {
+  border-color: #8a70e8;
+  background: #fbfaff;
+}
+
+.more-dot {
+  color: #7b8189;
+}
+
+.calendar-type,
+.calendar-status {
+  background: #f1f3f5;
+  color: #555b63;
+}
+
+.calendar-legend {
+  color: #6f757d;
+}
+
+.sheet {
+  background: #ffffff;
+  color: #22252a;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+}
+
+.sheet h2 {
+  color: #22252a;
+}
+
+.sheet button:not(.close) {
+  background: #ffffff;
+  border-color: #d9dde2;
+  color: #33373d;
+}
+
+.close {
+  color: #70757d;
+}
+
+.overlay {
+  background: rgba(0,0,0,.35);
+}
+
+.detail-link,
+.detail-link:visited {
+  color: #7057c7;
+}
+
+/* カレンダーの色分けは白背景でも見やすく */
+.dot.cal-event,.legend-dot.cal-event {
+  color: #7057c7;
+  background: #8a70e8;
+}
+.dot.cal-application-start,.legend-dot.cal-application-start {
+  color: #2f8a50;
+  background: #48a868;
+}
+.dot.cal-application-end,.legend-dot.cal-application-end {
+  color: #c44551;
+  background: #d85b68;
+}
+.dot.cal-popup,.legend-dot.cal-popup {
+  color: #b56d20;
+  background: #d88938;
+}
+.dot.cal-order,.legend-dot.cal-order {
+  color: #bd4779;
+  background: #d85b8c;
+}
+.dot.cal-schedule,.legend-dot.cal-schedule {
+  color: #566174;
+  background: #697386;
+}
+.dot.cal-announcement,.legend-dot.cal-announcement {
+  color: #9a7414;
+  background: #c69a2b;
+}
+
+.event-group.cal-event{border-left-color:#8a70e8}
+.event-group.cal-application-start{border-left-color:#48a868}
+.event-group.cal-application-end{border-left-color:#d85b68}
+.event-group.cal-popup{border-left-color:#d88938}
+.event-group.cal-order{border-left-color:#d85b8c}
+.event-group.cal-schedule{border-left-color:#697386}
+.event-group.cal-announcement{border-left-color:#c69a2b}
+
+/* スクロールバーも白基調に */
+#screen {
+  scrollbar-color: #cfd3d8 transparent;
+}
+
+/* スマホ */
+@media (max-width:600px){
+  .app {
+    background: #ffffff;
+  }
+}
+
+/* ===== 白基調・カラフル強化 ===== */
+body {
+  background: #f4f7fb;
+}
+
+.app {
+  background: #ffffff;
+}
+
+.header {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+}
+
+.header h1 {
+  letter-spacing: .03em;
+}
+
+/* ホームのカードを少しポップに */
+.grid .card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e7eaf0;
+  box-shadow: 0 3px 12px rgba(50,60,90,.07);
+}
+.grid .card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #8a70e8;
+}
+.grid .card:nth-child(2)::before { background: #55b9a5; }
+.grid .card:nth-child(3)::before { background: #f2a45b; }
+.grid .card:nth-child(4)::before { background: #e778a9; }
+
+.stat strong {
+  color: #2d3440;
+}
+
+/* 一覧カードを白＋淡い色アクセントに */
+.item {
+  position: relative;
+  overflow: hidden;
+  border-color: #e4e8ee;
+  box-shadow: 0 2px 9px rgba(50,60,90,.055);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #8a70e8;
+}
+.item:nth-child(2n)::before { background: #55b9a5; }
+.item:nth-child(3n)::before { background: #f2a45b; }
+.item:nth-child(4n)::before { background: #e778a9; }
+
+/* 予定一覧：項目同士の余白を広げる */
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.schedule-item {
+  padding: 15px 14px 15px 17px;
+  min-height: 76px;
+}
+.schedule-item::before {
+  width: 5px;
+}
+.schedule-item.schedule-event::before { background: #8a70e8; }
+.schedule-item.schedule-product::before { background: #55b9a5; }
+.schedule-item.schedule-order::before { background: #f2a45b; }
+.schedule-item.schedule-other::before { background: #e778a9; }
+
+.schedule-item.schedule-event .badge {
+  color: #7057c7;
+  border-color: #d9cff8;
+  background: #f5f1ff;
+}
+.schedule-item.schedule-product .badge {
+  color: #338b79;
+  border-color: #c6e9e1;
+  background: #effaf7;
+}
+.schedule-item.schedule-order .badge {
+  color: #b56d20;
+  border-color: #f2d4b2;
+  background: #fff7ed;
+}
+.schedule-item.schedule-other .badge {
+  color: #bd4779;
+  border-color: #f1c8db;
+  background: #fff2f8;
+}
+
+/* 予定一覧内の日時を見やすく */
+.schedule-item p {
+  margin-top: 9px;
+  font-size: 9px;
+}
+
+/* セクション見出しにも小さなアクセント */
+.section h2 {
+  position: relative;
+  padding-left: 9px;
+}
+.section h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 3px;
+  background: #8a70e8;
+}
+
+/* ボタンも白基調に馴染む少し明るい配色 */
+.primary {
+  background: linear-gradient(135deg, #8a70e8, #a184ee);
+  box-shadow: 0 3px 8px rgba(138,112,232,.2);
+}
+
+@media (max-width:600px) {
+  .schedule-list { gap: 12px; }
+  .schedule-item { padding: 14px 12px 14px 16px; }
+}
+
+
+/* ===== カレンダー予定：背景ではなく先頭の「●」だけ色付け ===== */
+.dot {
+  background: transparent !important;
+  color: #4f5660 !important;
+}
+.dot.cal-event::first-letter { color: #8a70e8; }
+.dot.cal-application-start::first-letter { color: #48a868; }
+.dot.cal-application-end::first-letter { color: #d85b68; }
+.dot.cal-popup::first-letter { color: #d88938; }
+.dot.cal-order::first-letter { color: #d85b8c; }
+.dot.cal-schedule::first-letter { color: #697386; }
+.dot.cal-announcement::first-letter { color: #c69a2b; }
