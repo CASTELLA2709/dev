@@ -33,9 +33,9 @@ function goBack(){
   else if(p==="productForm") target=state.productId?"product":target;
   else if(p==="scheduleForm") target=state.scheduleId?"schedule":target;
   else if(p==="saleItemForm") target="product";
-  else if(p==="event") target="events";
-  else if(p==="product") target="products";
-  else if(p==="schedule") target="schedules";
+  else if(p==="event") target=state.returnPage||"events";
+  else if(p==="product") target=state.returnPage||"products";
+  else if(p==="schedule") target=state.returnPage||"schedules";
   else if(p==="calendar") target="home";
   state.page=target;
   render();
@@ -286,6 +286,14 @@ function scheduleForm(){const old=schedules.find(x=>x.id==state.scheduleId)||{};
 function saveSchedule(ev){ev.preventDefault();const f=new FormData(ev.target),d={name:String(f.get("name")).trim(),date:f.get("date"),meetingTime:f.get("meetingTime"),meetingPlace:String(f.get("meetingPlace")||"").trim(),startTime:f.get("startTime"),type:f.get("type"),related:String(f.get("related")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("予定名を入力してください");return}if(!d.date){alert("予定日を入力してください");return}if(state.scheduleId)Object.assign(schedules.find(s=>s.id==state.scheduleId),d);else{const s={id:id(),...d};schedules.unshift(s);state.scheduleId=s.id}save(KEY.schedules,schedules);state.page="schedule";render()}
 function deleteSchedule(i){if(!confirm("予定を削除しますか？"))return;schedules=schedules.filter(s=>s.id!=i);save(KEY.schedules,schedules);go("schedules")}
 
+function openCalendarDetail(item){
+ if(!item || !item.entityId) return;
+ if(item.kind==="event"){state.returnPage="calendar";state.eventId=item.entityId;state.page="event";render();}
+ else if(item.kind==="product"){state.returnPage="calendar";state.productId=item.entityId;state.page="product";render();}
+ else if(item.kind==="schedule"){openScheduleFromCalendar(item.entityId);}
+}
+window.openCalendarDetail=openCalendarDetail;
+
 function calendar(){
  title("カレンダー");
  const y=state.calendarDate.getFullYear(),m=state.calendarDate.getMonth();
@@ -300,25 +308,25 @@ function calendar(){
  function getItems(k){
    const items=[];
    events.forEach(e=>(e.performances||[]).forEach(p=>{
-     if(p.date===k) addCalendarItem(items,{name:e.name,text:"公演 "+(p.venue||"")+" "+(p.start||""),type:"イベント",cls:"cal-event"});
+     if(p.date===k) addCalendarItem(items,{name:e.name,text:"公演 "+(p.venue||"")+" "+(p.start||""),type:"イベント",cls:"cal-event",entityId:e.id,kind:"event"});
    }));
    events.forEach(e=>(e.applications||[]).forEach(a=>{
      const statusCls=(a.status||"未応募").replace(/[^\wぁ-んァ-ヶ一-龠]/g,"");
      if(a.start&&a.start.slice(0,10)===k)
-       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status});
+       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status,entityId:e.id,kind:"event"});
      if(a.end&&a.end.slice(0,10)===k)
-       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status});
+       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status,entityId:e.id,kind:"event"});
      if(a.method==="抽選"&&a.announcement===k)
-       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status});
+       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
    }));
    products.forEach(p=>{
      const type=p.type||"POP UP";
      const cls=type==="受注販売"?"cal-order":"cal-popup";
-     if(p.start===k) addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls});
-     if(p.end===k) addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls});
+     if(p.start===k) addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls,entityId:p.id,kind:"product"});
+     if(p.end===k) addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls,entityId:p.id,kind:"product"});
    });
    schedules.forEach(x=>{
-     if((x.date||String(x.start||"").slice(0,10))===k) { const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / "); addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",scheduleId:x.id}); }
+     if((x.date||String(x.start||"").slice(0,10))===k) { const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / "); addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",scheduleId:x.id,entityId:x.id,kind:"schedule"}); }
    });
    return items;
  }
@@ -326,19 +334,20 @@ function calendar(){
  days.forEach(d=>{
    const k=key(d),items=getItems(k);
    cells+=`<div class="day ${d.getMonth()!=m?"other":""} ${k===today?"today":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
-   items.slice(0,3).forEach(x=>cells+=`<span class="dot ${x.cls}" title="${esc(x.text)}" ${x.scheduleId?`onclick="event.stopPropagation();openScheduleFromCalendar('${x.scheduleId}')"`:""}>● ${esc(x.name)}</span>`);
+   items.slice(0,3).forEach(x=>cells+=`<span class="dot ${x.cls} ${x.entityId?"calendar-clickable":""}" title="${esc(x.text)}" ${x.entityId?`onclick="event.stopPropagation();openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})"`:""}>● ${esc(x.name)}</span>`);
    if(items.length>3) cells+=`<span class="more-dot">＋${items.length-3}件</span>`;
    cells+='</div>';
  });
 
  const selectedItems=getItems(sk);
  const details=selectedItems.map(x=>`
-   <div class="card event-group ${x.cls}" ${x.scheduleId?`onclick="openScheduleFromCalendar('${x.scheduleId}')"`:""}>
+   <div class="card event-group ${x.cls}">
      <div class="calendar-detail-head">
        <strong>${esc(x.name)}</strong>
        <span class="calendar-type">${esc(x.type)}</span>
      </div>
      <div>${esc(x.text)}${x.status?`　<span class="calendar-status">${esc(x.status)}</span>`:""}</div>
+     ${x.entityId?`<div class="calendar-detail-actions"><button type="button" class="primary calendar-detail-button" onclick="event.stopPropagation(); openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})">${x.kind==="event"?"イベント詳細を見る":x.kind==="product"?"販売詳細を見る":"予定詳細を見る"}</button></div>`:""}
    </div>`).join("");
 
  document.getElementById("screen").innerHTML=`
