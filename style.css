@@ -726,3 +726,18 @@ body {
 .calendar-detail-button{padding:9px 12px;font-size:11px}
 .calendar-clickable{cursor:pointer}
 .calendar-clickable:hover{opacity:.75}
+
+
+/* ===== 申込・注文の表を見やすく拡大 ===== */
+.application-table{font-size:10px;}
+.application-row{padding:10px 10px;font-size:10px;min-height:38px;}
+.application-head{font-size:9px;}
+.application-name{font-size:10px;}
+.application-period{font-size:10px;line-height:1.4;}
+.application-row .status{font-size:9px;padding:4px 7px;}
+@media(max-width:600px){
+  .application-row{padding:9px 7px;font-size:9px;min-height:36px;grid-template-columns:1.25fr 1.45fr .75fr .9fr;gap:4px;}
+  .application-head{font-size:8px;}
+  .application-name,.application-period{font-size:9px;}
+  .application-row .status{font-size:8px;padding:4px 6px;}
+}
