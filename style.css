@@ -41,3 +41,59 @@ button,input,select,textarea{font:inherit}.app{height:100vh;max-width:540px;marg
 .calendar-detail-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .calendar-type{font-size:7px;padding:3px 6px;border-radius:99px;background:#292930;color:#c8c8d0;white-space:nowrap}
 .calendar-status{font-size:7px;padding:2px 6px;border-radius:99px;background:#292930;color:#ddd}
+
+/* ===== UIサイズ調整 ===== */
+/* 全体の文字を少し大きくして読みやすくする */
+body{font-size:16px}
+.header h1{font-size:19px}
+.bottom-nav button{font-size:20px}
+.bottom-nav span{font-size:10px}
+.hero h2{font-size:25px}
+.sub{font-size:11px}
+.section h2{font-size:15px}
+.count{font-size:10px}
+.item h3{font-size:14px}
+.item p{font-size:11px}
+.badge,.status{font-size:9px}
+.stat strong{font-size:25px}
+.stat span{font-size:10px}
+.group label{font-size:11px}
+.input{font-size:12px;padding:10px}
+.detail{font-size:11px}
+.performance-title{font-size:12px}
+.calendar-title{font-size:16px}
+.week{font-size:10px}
+.day{font-size:10px}
+.dot{font-size:9px}
+.more-dot{font-size:8px}
+.calendar-legend{font-size:9px}
+.event-group strong{font-size:12px}
+.event-group div{font-size:10px}
+.calendar-type,.calendar-status{font-size:9px}
+.empty{font-size:12px}
+.sheet h2{font-size:17px}
+
+/* 削除などの操作ボタンはコンパクトに */
+.remove{font-size:10px;padding:2px 5px}
+.actions .danger,.actions .secondary{padding:7px 10px;font-size:11px}
+.performance .remove{width:auto}
+
+/* 日付・日時入力欄をコンパクトに */
+input[type="date"],
+input[type="datetime-local"]{
+  width:155px;
+  max-width:155px;
+}
+
+/* 2列の日付欄でも横幅を固定 */
+.time-grid{min-width:0}
+.time-grid .group{min-width:0}
+.time-grid input[type="date"],
+.time-grid input[type="datetime-local"]{width:100%;max-width:155px}
+
+/* カレンダーの横幅を常に固定。予定名が長くても列幅を広げない */
+.calendar-head,.calendar-legend,.week,.cal-grid,.selected-day{width:100%;min-width:0}
+.cal-grid{grid-template-columns:repeat(7,minmax(0,1fr));}
+.day{min-width:0;width:100%;overflow:hidden}
+.dot{display:block;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.more-dot{width:100%;overflow:hidden;white-space:nowrap}
