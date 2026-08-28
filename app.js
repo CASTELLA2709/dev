@@ -2,7 +2,7 @@ const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
 schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:true,past:false}};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false}};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
@@ -37,7 +37,44 @@ function nav(){
   }
 }
 function render(){nav();switch(state.page){case"home":home();break;case"calendar":calendar();break;case"events":eventsList();break;case"event":eventDetail();break;case"eventForm":eventForm();break;case"products":productsList();break;case"product":productDetail();break;case"productForm":productForm();break;case"schedules":scheduleList();break;case"schedule":scheduleDetail();break;case"scheduleForm":scheduleForm();break;case"orderForm":orderForm();break;case"saleItemForm":saleItemForm();break}}
-function go(p){state.page=p;state.eventId=null;state.productId=null;state.scheduleId=null;state.orderId=null;state.saleItemIndex=null;render()}
+function go(p){
+  // フッターから画面を切り替えたときは、各画面を毎回初期表示状態に戻す
+  state.page=p;
+  state.returnPage=p;
+  state.eventId=null;
+  state.productId=null;
+  state.scheduleId=null;
+  state.orderId=null;
+  state.saleItemIndex=null;
+
+  // 一覧画面の絞り込み・開閉状態をリセット
+  if(p==="events"){
+    state.filters.events={type:"",keyword:""};
+    state.eventSections={current:true,future:false,past:false};
+  }else if(p==="products"){
+    state.filters.products={type:"",keyword:""};
+  }else if(p==="schedules"){
+    state.filters.schedules={type:"",keyword:""};
+    state.scheduleSections={current:true,future:false,past:false};
+  }
+
+  // カレンダーは今日を起点に初期状態へ戻す
+  if(p==="calendar"){
+    const today=new Date();
+    today.setHours(0,0,0,0);
+    state.calendarDate=new Date(today.getFullYear(),today.getMonth(),1);
+    state.selectedDate=new Date(today);
+  }
+
+  // 開いているモーダルを閉じる
+  document.getElementById("addModal")?.classList.add("hidden");
+  document.getElementById("filterModal")?.remove();
+
+  render();
+  // 画面切り替え時にスクロール位置も先頭へ戻す
+  const screen=document.getElementById("screen");
+  if(screen) screen.scrollTop=0;
+}
 document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>go(b.dataset.page));
 document.getElementById("backButton").onclick=goBack;
 // フォーム入力中のEnterキーで意図せず登録・保存されないようにする
@@ -77,7 +114,7 @@ function home(){
    return {event:e,nextDate:dates.length?new Date(Math.min(...dates.map(d=>d.getTime()))):null};
  }).filter(x=>x.nextDate).sort((a,b)=>a.nextDate-b.nextDate).slice(0,3).map(x=>x.event);
  title("ホーム");
- document.getElementById("screen").innerHTML=`<div class="hero"><h2>抽選管理</h2><div class="sub">イベントを中心に、公演日と申込・注文をまとめて管理</div></div><div class="grid"><div class="card stat" onclick="go('events')"><strong>${events.length}</strong><span>イベント</span></div><div class="card stat" onclick="go('products')"><strong>${products.length}</strong><span>商品</span></div><div class="card stat"><strong>${events.reduce((n,e)=>n+(e.applications||[]).length,0)}</strong><span class="home-application-label">申込・注文</span></div><div class="card stat" onclick="go('schedules')"><strong>${schedules.length}</strong><span>予定</span></div></div><div class="section"><h2>最近のイベント</h2><span class="count">${recentEvents.length}件</span></div>${recentEvents.length?`<div class="list">${recentEvents.map(eventCard).join("")}</div>`:`<div class="empty">今後の公演予定があるイベントはありません。</div>`}`
+ document.getElementById("screen").innerHTML=`<div class="hero"><h2>抽選管理</h2><div class="sub">イベントを中心に、公演日と申込・注文をまとめて管理</div></div><div class="grid"><div class="card stat" onclick="go('events')"><strong>${events.length}</strong><span>イベント</span></div><div class="card stat" onclick="go('products')"><strong>${products.length}</strong><span>商品</span></div><div class="card stat"><strong>${events.reduce((n,e)=>n+(e.applications||[]).length,0)}</strong><span class="home-application-label">申込・注文</span></div><div class="card stat" onclick="go('schedules')"><strong>${schedules.length}</strong><span>予定</span></div></div><div class="section"><h2>直近のイベント</h2><span class="count">${recentEvents.length}件</span></div>${recentEvents.length?`<div class="list">${recentEvents.map(eventCard).join("")}</div>`:`<div class="empty">今後の公演予定があるイベントはありません。</div>`}`
 }
 function applicationStatusSummary(e){
  const apps=e.applications||[];
@@ -119,9 +156,9 @@ function eventsList(){
  past.sort((a,b)=>nearestDate(a)-nearestDate(b));
  title("イベント一覧");
 
- const visibility=state.eventSections||{current:true,future:true,past:false};
+ const visibility=state.eventSections||{current:true,future:false,past:false};
  const toggleSection=key=>{
-   state.eventSections=state.eventSections||{current:true,future:true,past:false};
+   state.eventSections=state.eventSections||{current:true,future:false,past:false};
    state.eventSections[key]=!state.eventSections[key];
    render();
  };
@@ -291,8 +328,8 @@ function scheduleList(){
  const sortByDate=(a,b)=>(getDate(a)||new Date(8640000000000000))-(getDate(b)||new Date(8640000000000000));
  current.sort(sortByDate);future.sort(sortByDate);past.sort((a,b)=>sortByDate(b,a));
  title("予定");
- const visibility=state.scheduleSections||{current:true,future:true,past:false};
- const toggleScheduleSection=key=>{state.scheduleSections=state.scheduleSections||{current:true,future:true,past:false};state.scheduleSections[key]=!state.scheduleSections[key];render()};
+ const visibility=state.scheduleSections||{current:true,future:false,past:false};
+ const toggleScheduleSection=key=>{state.scheduleSections=state.scheduleSections||{current:true,future:false,past:false};state.scheduleSections[key]=!state.scheduleSections[key];render()};
  window.toggleScheduleSection=toggleScheduleSection;
  const card=s=>{const cls=s.type==="イベント関連"?"schedule-event":s.type==="商品関連"?"schedule-product":s.type==="申込・注文関連"?"schedule-order":"schedule-other";const time=[s.meetingTime?`集合 ${s.meetingTime}`:"",s.startTime?`開始 ${s.startTime}`:""].filter(Boolean).join(" / ");return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${date(s.date||String(s.start||"").slice(0,10))}${time?`　${esc(time)}`:""}</p></div>`};
  const block=(key,label,items)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block schedule-list-block ${key}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleScheduleSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
