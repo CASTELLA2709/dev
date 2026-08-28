@@ -696,3 +696,16 @@ body {
  .application-head{font-size:6.5px;}
  .application-row .status{font-size:7px;padding:3px 5px;}
 }
+
+/* 詳細画面：項目を見やすく拡大 */
+.detail {
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 12px 0;
+}
+.detail span {
+  font-size: 14px;
+}
+.detail b {
+  font-size: 15px;
+}
