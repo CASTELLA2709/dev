@@ -334,7 +334,7 @@ function calendar(){
  days.forEach(d=>{
    const k=key(d),items=getItems(k);
    cells+=`<div class="day ${d.getMonth()!=m?"other":""} ${k===today?"today":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
-   items.slice(0,3).forEach(x=>cells+=`<span class="dot ${x.cls} ${x.entityId?"calendar-clickable":""}" title="${esc(x.text)}" ${x.entityId?`onclick="event.stopPropagation();openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})"`:""}>● ${esc(x.name)}</span>`);
+   items.slice(0,3).forEach(x=>cells+=`<span class="dot ${x.cls}" title="${esc(x.text)}">● ${esc(x.name)}</span>`);
    if(items.length>3) cells+=`<span class="more-dot">＋${items.length-3}件</span>`;
    cells+='</div>';
  });
