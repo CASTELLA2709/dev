@@ -97,3 +97,88 @@ input[type="datetime-local"]{
 .day{min-width:0;width:100%;overflow:hidden}
 .dot{display:block;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .more-dot{width:100%;overflow:hidden;white-space:nowrap}
+
+
+/* ===== スクロール・フリック調整 ===== */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body {
+  touch-action: pan-y;
+}
+.app {
+  height: 100dvh;
+  min-height: 100%;
+  overflow: hidden;
+}
+#screen {
+  min-height: 0;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+/* 新規登録メニューは常に画面下端に固定 */
+.overlay {
+  align-items: flex-end;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+.sheet {
+  max-height: min(80dvh, 560px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+/* ===== 開場時間・開演時間のスマホ表示調整 ===== */
+/* 2つの時刻入力が重ならないよう、時刻欄だけ幅をコンパクトにする */
+.performance .time-grid input[type="time"]{
+  width:120px;
+  max-width:120px;
+}
+
+@media (max-width: 600px){
+  .performance .time-grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:6px;
+  }
+  .performance .time-grid .group{
+    min-width:0;
+  }
+  .performance .time-grid input[type="time"]{
+    width:105px;
+    max-width:100%;
+  }
+}
+
+/* ===== 日付・日時・時間の右端アイコンを白で表示 ===== */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"]{
+  color-scheme: dark;
+  color: #fff;
+  padding-right: 38px;
+}
+
+/* 標準のピッカーアイコンをそのまま使用し、白く表示する
+   opacity:0 にすると環境によってクリックできなくなるため使用しない */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator{
+  opacity: 1;
+  cursor: pointer;
+  filter: brightness(0) invert(1);
+}
+
+@media (max-width:600px){
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"]{
+    padding-right: 34px;
+  }
+}

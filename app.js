@@ -21,7 +21,21 @@ function nav(){
 function render(){nav();switch(state.page){case"home":home();break;case"calendar":calendar();break;case"events":eventsList();break;case"event":eventDetail();break;case"eventForm":eventForm();break;case"products":productsList();break;case"product":productDetail();break;case"productForm":productForm();break;case"schedules":scheduleList();break;case"schedule":scheduleDetail();break;case"scheduleForm":scheduleForm();break;case"orderForm":orderForm();break}}
 function go(p){state.page=p;state.eventId=null;state.productId=null;state.scheduleId=null;state.orderId=null;render()}
 document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>go(b.dataset.page));
-document.getElementById("backButton").onclick=()=>{state.page=state.returnPage||"home";render()};
+document.getElementById("backButton").onclick=goBack;
+function goBack(){
+  const p=state.page;
+  let target=state.returnPage||"home";
+  if(p==="eventForm") target=state.eventId?"event":target;
+  else if(p==="orderForm") target="event";
+  else if(p==="productForm") target=state.productId?"product":target;
+  else if(p==="scheduleForm") target=state.scheduleId?"schedule":target;
+  else if(p==="event") target="events";
+  else if(p==="product") target="products";
+  else if(p==="schedule") target="schedules";
+  else if(p==="calendar") target="home";
+  state.page=target;
+  render();
+}
 document.getElementById("addButton").onclick=()=>document.getElementById("addModal").classList.remove("hidden");
 function closeAdd(){document.getElementById("addModal").classList.add("hidden")}
 function newEvent(){closeAdd();state.returnPage=state.page;state.page="eventForm";state.eventId=null;render()}
