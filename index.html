@@ -30,9 +30,18 @@
   <div class="sheet">
     <button class="close" onclick="closeAdd()">×</button>
     <h2>新規登録</h2>
-    <button onclick="newEvent()">イベント</button>
-    <button onclick="newProduct()">POP UP・販売</button>
-    <button onclick="newSchedule()">予定</button>
+    <button class="add-option event-option" onclick="newEvent()">
+      <span class="add-option-icon" aria-hidden="true">▣</span>
+      <span class="add-option-text"><strong>イベント</strong><small>ライブ・舞台・コンサートなどのイベントを登録</small></span>
+    </button>
+    <button class="add-option product-option" onclick="newProduct()">
+      <span class="add-option-icon" aria-hidden="true">♧</span>
+      <span class="add-option-text"><strong>POP UP・販売</strong><small>POP UPイベントや受注販売などを登録</small></span>
+    </button>
+    <button class="add-option schedule-option" onclick="newSchedule()">
+      <span class="add-option-icon" aria-hidden="true">□</span>
+      <span class="add-option-text"><strong>予定</strong><small>一般的な予定やリマインダーを登録</small></span>
+    </button>
   </div>
 </div>
 <script src="app.js"></script>
