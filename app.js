@@ -12,6 +12,21 @@ function urlDetail(k,v){const raw=String(v||"").trim();if(!raw)return detail(k,"
 function title(t,back=false){
   document.getElementById("pageTitle").textContent=t;
   document.getElementById("backButton").classList.toggle("hidden",!back);
+
+  const header=document.querySelector(".header");
+  const icon=document.getElementById("headerIcon");
+  const page=state.page;
+  const icons={
+    home:`<svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>`,
+    calendar:`<svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 9h18"/></svg>`,
+    events:`<svg viewBox="0 0 24 24"><path d="M4 7.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2.5 2.5 0 0 0 0 5v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2.5 2.5 0 0 0 0-5v-2Z"/><path d="M10 7.5v9M14 7.5v9"/></svg>`,
+    products:`<svg viewBox="0 0 24 24"><path d="M5 8h14l1 13H4L5 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg>`,
+    schedules:`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>`
+  };
+  const key=["home","calendar","events","products","schedules"].includes(page)?page:"detail";
+  header.className=`header header-${key}${back?" header-with-back":""}`;
+  icon.innerHTML=icons[page]||`<svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>`;
+  icon.classList.toggle("hidden",back);
 }
 function nav(){
   document.querySelectorAll(".bottom-nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));

@@ -12,17 +12,35 @@
 <body>
 <div class="app">
 <header class="header">
-  <button id="backButton" class="header-btn hidden">‹</button>
-  <h1 id="pageTitle">ホーム</h1>
+  <button id="backButton" class="header-btn hidden" aria-label="戻る">‹</button>
+  <div class="header-brand">
+    <span id="headerIcon" class="header-icon" aria-hidden="true"></span>
+    <h1 id="pageTitle">ホーム</h1>
+  </div>
   <button id="addButton" class="header-btn">＋</button>
 </header>
 <main id="screen"></main>
 <nav class="bottom-nav">
-  <button data-page="home">⌂<span>ホーム</span></button>
-  <button data-page="calendar">▦<span>カレンダー</span></button>
-  <button data-page="events">●<span>イベント</span></button>
-  <button data-page="products">□<span>商品</span></button>
-  <button data-page="schedules">◷<span>予定</span></button>
+  <button data-page="home">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
+    <span>ホーム</span>
+  </button>
+  <button data-page="calendar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 9h18"/><path d="M7 13h.01M12 13h.01M17 13h.01M7 17h.01M12 17h.01"/></svg>
+    <span>カレンダー</span>
+  </button>
+  <button data-page="events">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.5l3 2"/></svg>
+    <span>イベント</span>
+  </button>
+  <button data-page="products">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 13H4L5 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg>
+    <span>商品</span>
+  </button>
+  <button data-page="schedules">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>
+    <span>予定</span>
+  </button>
 </nav>
 </div>
 
@@ -30,16 +48,22 @@
   <div class="sheet">
     <button class="close" onclick="closeAdd()">×</button>
     <h2>新規登録</h2>
-    <button class="add-option event-option" onclick="newEvent()">
-      <span class="add-option-icon" aria-hidden="true">▣</span>
+    <button class="add-option" onclick="newEvent()">
+      <span class="add-option-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="12" y1="12.5" x2="12" y2="17"/><line x1="9.5" y1="14.75" x2="14.5" y2="14.75"/></svg>
+      </span>
       <span class="add-option-text"><strong>イベント</strong><small>ライブ・舞台・コンサートなどのイベントを登録</small></span>
     </button>
-    <button class="add-option product-option" onclick="newProduct()">
-      <span class="add-option-icon" aria-hidden="true">♧</span>
+    <button class="add-option" onclick="newProduct()">
+      <span class="add-option-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 8h14l1 13H4L5 8z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg>
+      </span>
       <span class="add-option-text"><strong>POP UP・販売</strong><small>POP UPイベントや受注販売などを登録</small></span>
     </button>
-    <button class="add-option schedule-option" onclick="newSchedule()">
-      <span class="add-option-icon" aria-hidden="true">□</span>
+    <button class="add-option" onclick="newSchedule()">
+      <span class="add-option-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+      </span>
       <span class="add-option-text"><strong>予定</strong><small>一般的な予定やリマインダーを登録</small></span>
     </button>
   </div>
