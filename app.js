@@ -2,7 +2,7 @@ const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
 schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false}};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false}};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
@@ -53,6 +53,7 @@ function go(p){
     state.eventSections={current:true,future:false,past:false};
   }else if(p==="products"){
     state.filters.products={type:"",keyword:""};
+    state.productSections={soon:true,comfortable:false,expired:false,general:false,purchased:false};
   }else if(p==="schedules"){
     state.filters.schedules={type:"",keyword:""};
     state.scheduleSections={current:true,future:false,past:false};
@@ -224,8 +225,40 @@ function orderForm(){const e=events.find(x=>x.id==state.eventId);if(!e){go("even
 function saveApplication(ev){ev.preventDefault();const e=events.find(x=>x.id==state.eventId),f=new FormData(ev.target),d={name:String(f.get("name")).trim(),method:f.get("method"),start:f.get("start"),end:f.get("end"),announcement:f.get("method")==="抽選"?f.get("announcement"):"",status:f.get("status"),quantity:Number(f.get("quantity")||1),payment:String(f.get("payment")||""),shipping:String(f.get("shipping")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("名称を入力してください");return}e.applications=e.applications||[];if(state.orderId)Object.assign(e.applications.find(a=>a.id==state.orderId),d);else e.applications.push({id:id(),...d});save(KEY.events,events);state.page="event";render()}
 function deleteApplication(eid,aid){if(!confirm("この申込・注文を削除しますか？"))return;const e=events.find(x=>x.id==eid);e.applications=e.applications.filter(a=>a.id!=aid);save(KEY.events,events);render()}
 
-function productsList(){const f=state.filters.products;const list=products.filter(p=>(!f.type||((p.type||"POP UP")===f.type))&&(!f.keyword||[p.name,p.venue].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));title("グッズ・販売");document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${list.length?`<div class="list">${list.map(p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><span class="badge">${esc(p.type||"POP UP")}</span></div><p>${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</p><p>買いたい商品 ${p.items?.length||0}件</p></div>`).join("")}</div>`:`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`}`}
+function productsList(){
+ const f=state.filters.products;
+ const list=products.filter(p=>(!f.type||((p.type||"POP UP")===f.type))&&(!f.keyword||[p.name,p.venue].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
+ const today=new Date(); today.setHours(0,0,0,0);
+ const weekLater=new Date(today); weekLater.setDate(weekLater.getDate()+7);
+ const soon=[],comfortable=[],expired=[],general=[],purchased=[];
+ list.forEach(p=>{
+   if(p.purchased){purchased.push(p);return}
+   const type=p.type||"POP UP";
+   if(type==="通常販売"){general.push(p);return}
+   const end=p.end?new Date(p.end+"T00:00:00"):null;
+   if(!end||isNaN(end)){comfortable.push(p);return}
+   if(end<today) expired.push(p);
+   else if(end<=weekLater) soon.push(p);
+   else comfortable.push(p);
+ });
+ const endTime=p=>p.end?new Date(p.end+"T00:00:00").getTime():Infinity;
+ [soon,comfortable,expired,general,purchased].forEach(a=>a.sort((x,y)=>endTime(x)-endTime(y)));
+ title("グッズ・販売");
+ const visibility=state.productSections||{soon:true,comfortable:false,expired:false,general:false,purchased:false};
+ const toggleSection=key=>{state.productSections=state.productSections||{soon:true,comfortable:false,expired:false,general:false};state.productSections[key]=!state.productSections[key];render()};
+ const card=p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</p><p>買いたい商品 ${p.items?.length||0}件</p></div>`;
+ const block=(key,label,items,cls)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block product-list-block ${cls}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleProductSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
+ window.toggleProductSection=toggleSection;
+ document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${block("soon","期限が一週間以内",soon,"soon-products")}${block("comfortable","期限に余裕がある",comfortable,"comfortable-products")}${block("expired","期限が過ぎたもの",expired,"expired-products")}${block("general","一般販売",general,"general-products")}${block("purchased","購入済み",purchased,"purchased-products")}${!list.length?`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`:""}`;
+}
 function openProduct(i){state.returnPage="products";state.productId=i;state.page="product";render()}
+function toggleProductPurchased(id, checked){
+ const p=products.find(x=>x.id==id);
+ if(!p)return;
+ p.purchased=!!checked;
+ save(KEY.products,products);
+ render();
+}
 function productDetail(){
  const p=products.find(x=>x.id==state.productId);
  if(!p){go("products");return}
@@ -237,7 +270,7 @@ function productDetail(){
    <h2>${esc(p.name)}</h2>
    <div class="sub">${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</div>
  </div>
- <div class="card">${detail("販売名",p.name)}${detail("販売種別",p.type)}${detail("開始日",p.start?date(p.start):"")}${detail("終了日",p.end?date(p.end):"")}${detail("会場",p.venue)}${urlDetail("URL",p.url)}${detail("メモ",p.memo)}</div>
+ <div class="card">${detail("販売名",p.name)}${detail("販売種別",p.type)}${detail("開始日",p.start?date(p.start):"")}${detail("終了日",p.end?date(p.end):"")}${detail("会場",p.venue)}${urlDetail("URL",p.url)}${detail("メモ",p.memo)}<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee"><label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer"><input type="checkbox" ${p.purchased?"checked":""} onchange="toggleProductPurchased('${p.id}',this.checked)" style="width:20px;height:20px">購入済み${p.type==="通常販売"&&p.purchased?`<span class="status status-done" style="margin-left:auto">済</span>`:""}</label></div></div>
  <div class="section"><h2>買いたい商品</h2><span class="count">${p.items?.length||0}件</span></div>
  ${p.items?.length?`<div class="list">${p.items.map((it,i)=>`
    <div class="item">
