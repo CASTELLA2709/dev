@@ -71,7 +71,7 @@ function statusClass(status){return ({"受付中":"open","応募予定":"planned
 function applicationRows(e){
  const apps=e.applications||[];
  if(!apps.length)return `<div class="application-empty">申込・注文はありません</div>`;
- return `<div class="application-table"><div class="application-row application-head"><span>名称</span><span>期間</span><span>発表日</span><span>ステータス</span></div>${apps.map(a=>`<div class="application-row"><span class="application-name">${esc(a.name||"申込・注文")}</span><span>${a.start||a.end?`${dt(a.start)} ～ ${dt(a.end)}`:"―"}</span><span>${a.announcement?date(a.announcement):"―"}</span><span class="status status-${statusClass(a.status)}">${esc(a.status||"未応募")}</span></div>`).join("")}</div>`;
+ return `<div class="application-table"><div class="application-row application-head"><span>名称</span><span>期間</span><span>発表日</span><span>ステータス</span></div>${apps.map(a=>`<div class="application-row"><span class="application-name">${esc(a.name||"申込・注文")}</span><span class="application-period">${a.start||a.end?`<span>${dt(a.start)}</span><span>～ ${dt(a.end)}</span>`:"―"}</span><span>${a.announcement?date(a.announcement):"―"}</span><span class="status status-${statusClass(a.status)}">${esc(a.status||"未応募")}</span></div>`).join("")}</div>`;
 }
 function eventCard(e){return `<div class="item" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　申込・注文 ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full"><span class="summary-label">申込・注文</span>${applicationRows(e)}</div></div>`}
 function eventsList(){

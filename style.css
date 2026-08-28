@@ -687,6 +687,10 @@ body {
 .application-name{font-weight:600;color:#333;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .application-empty{margin-top:6px;font-size:8px;color:#999;}
 .application-row .status{justify-self:start;white-space:nowrap;}
+
+/* イベント一覧：申込・注文の期間を2行表示 */
+.application-period{display:flex;flex-direction:column;line-height:1.35;white-space:nowrap;}
+.application-period span:last-child{padding-left:2px;}
 @media(max-width:600px){
  .application-row{grid-template-columns:1.25fr 1.45fr .75fr .9fr;gap:4px;padding:7px 6px;font-size:7px;}
  .application-head{font-size:6.5px;}
