@@ -40,6 +40,14 @@ function render(){nav();switch(state.page){case"home":home();break;case"calendar
 function go(p){state.page=p;state.eventId=null;state.productId=null;state.scheduleId=null;state.orderId=null;state.saleItemIndex=null;render()}
 document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>go(b.dataset.page));
 document.getElementById("backButton").onclick=goBack;
+// フォーム入力中のEnterキーで意図せず登録・保存されないようにする
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  const t=e.target;
+  if(t && t.tagName!=="TEXTAREA" && t.closest("form")){
+    e.preventDefault();
+  }
+});
 function goBack(){
   const p=state.page;
   let target=state.returnPage||"home";
