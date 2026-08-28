@@ -398,3 +398,31 @@ function calendar(){
 function changeMonth(n){state.calendarDate.setMonth(state.calendarDate.getMonth()+n);render()}
 function selectCalendar(k){state.selectedDate=new Date(k+"T00:00:00");render()}
 render();
+
+/* スクロール端での余計な跳ね返りを防止 */
+(function setupScrollBoundaryLock(){
+  let startY = 0;
+  function bind(el){
+    if(!el || el.dataset.scrollBoundaryLock) return;
+    el.dataset.scrollBoundaryLock = '1';
+    el.addEventListener('touchstart', function(e){
+      if(e.touches.length === 1) startY = e.touches[0].clientY;
+    }, {passive:true});
+    el.addEventListener('touchmove', function(e){
+      if(e.touches.length !== 1) return;
+      const y = e.touches[0].clientY;
+      const dy = y - startY;
+      const max = Math.max(0, el.scrollHeight - el.clientHeight);
+      if(max <= 0) return;
+      const atTop = el.scrollTop <= 0;
+      const atBottom = el.scrollTop >= max - 1;
+      if((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
+    }, {passive:false});
+  }
+  function bindAll(){
+    bind(document.getElementById('screen'));
+    document.querySelectorAll('.sheet').forEach(bind);
+  }
+  bindAll();
+  new MutationObserver(bindAll).observe(document.body, {childList:true, subtree:true});
+})();

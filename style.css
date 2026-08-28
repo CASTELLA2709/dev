@@ -921,3 +921,7 @@ body {
   .header h1{font-size:18px}
   .header-with-back{padding-left:48px}
 }
+
+/* ===== スクロール端でピタッと停止 ===== */
+html, body, .app, #screen, .sheet { overscroll-behavior: none; }
+#screen, .sheet { -webkit-overflow-scrolling: touch; }
