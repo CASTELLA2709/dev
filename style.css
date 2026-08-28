@@ -634,3 +634,33 @@ body {
 .event-list-block .list {
   margin-top: 0;
 }
+
+/* ===== 予定：集合時間・予定開始時刻をさらにコンパクトに ===== */
+#scheduleForm .time-grid{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+#scheduleForm .time-grid .group{
+  flex:0 0 auto;
+  width:auto;
+}
+#scheduleForm .time-grid input[type="time"]{
+  width:90px !important;
+  min-width:90px !important;
+  max-width:90px !important;
+  box-sizing:border-box !important;
+  flex:none !important;
+}
+
+@media (max-width:600px){
+  #scheduleForm .time-grid{
+    display:flex;
+    gap:8px;
+  }
+  #scheduleForm .time-grid input[type="time"]{
+    width:82px !important;
+    min-width:82px !important;
+    max-width:82px !important;
+  }
+}
