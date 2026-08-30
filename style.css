@@ -953,3 +953,25 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
   .calendar-select-arrow{right:6px;font-size:13px}
   .calendar-head .calendar-nav-button{min-width:31px;height:32px;font-size:18px}
 }
+
+
+/* ===== カレンダー選択中の日付 ===== */
+.day.selected-day-cell{
+  background:#f0ebff;
+  border-color:#8a70e8;
+  box-shadow:inset 0 0 0 1px #8a70e8;
+}
+.day.selected-day-cell b{
+  color:#6f55c9;
+}
+.day.selected-day-cell .dot{
+  color:inherit;
+}
+
+/* 選択した日付の横に配置する追加ボタン */
+.selected-day-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.selected-day-actions{display:flex;align-items:center;gap:6px}
+.selected-day-actions .count{margin-right:2px}
+.calendar-add-button{border:1px solid #d9dfe7;background:#fff;color:#333;border-radius:7px;padding:5px 8px;font-size:12px;line-height:1;cursor:pointer;white-space:nowrap}
+.calendar-add-button:hover{background:#f6f8fa}
+@media(max-width:600px){.selected-day-actions{gap:4px}.calendar-add-button{padding:5px 7px;font-size:11px}}
