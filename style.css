@@ -987,3 +987,12 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
   .cal-grid-week .week-day{min-height:105px}
   .cal-grid-week .week-day .dot{font-size:8px;margin-top:5px}
 }
+
+/* カレンダー：土日祝日 */
+.day.sunday b,.week span:first-child{color:#d85c5c}
+.day.saturday b,.week span:last-child{color:#4f83c4}
+.day.holiday b{color:#d85c5c}
+.day.sunday.holiday b{color:#d85c5c}
+.day.other.sunday b,.day.other.holiday b{color:#e7a0a0}
+.day.other.saturday b{color:#9ab8da}
+.calendar-filter-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:8px 0 7px}.calendar-filter-label{font-size:9px;font-weight:700;color:#777;margin-right:2px}.calendar-filter-chip,.calendar-filter-all{border:1px solid #d7d7dc;background:#fff;color:#555;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap}.calendar-filter-chip.active{background:#333;color:#fff;border-color:#333}.calendar-filter-all{margin-left:auto;background:#f6f6f8}@media(max-width:600px){.calendar-filter-bar{gap:4px}.calendar-filter-chip,.calendar-filter-all{padding:4px 6px;font-size:8px}.calendar-filter-all{margin-left:0}}

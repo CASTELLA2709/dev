@@ -2,7 +2,7 @@ const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
 schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false}};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,schedule:true}};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
@@ -407,23 +407,56 @@ function openCalendarDetail(item){
 }
 window.openCalendarDetail=openCalendarDetail;
 
+function getJapaneseHolidays(year){
+ const h=new Map();
+ const add=(month,day,name)=>h.set(`${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`,name);
+ const nthMonday=(month,n)=>{const d=new Date(year,month-1,1); return 1+((8-d.getDay())%7)+(n-1)*7};
+ add(1,1,"元日");
+ if(year>=2000) add(1,nthMonday(1,2),"成人の日"); else if(year>=1949) add(1,15,"成人の日");
+ add(2,11,"建国記念の日");
+ if(year>=2020) add(2,23,"天皇誕生日");
+ if(year>=2019){
+   const vernal=Math.floor(20.8431+0.242194*(year-1980)-Math.floor((year-1980)/4));
+   add(3,vernal,"春分の日");
+ }
+ add(4,29,"昭和の日");
+ add(5,3,"憲法記念日"); add(5,4,"みどりの日"); add(5,5,"こどもの日");
+ if(year>=2003) add(7,nthMonday(7,3),"海の日"); else if(year>=1996) add(7,20,"海の日");
+ if(year>=2016) add(8,11,"山の日");
+ if(year>=2003) add(9,nthMonday(9,3),"敬老の日"); else if(year>=1966) add(9,15,"敬老の日");
+ if(year>=2019){
+   const autumn=Math.floor(23.2488+0.242194*(year-1980)-Math.floor((year-1980)/4));
+   add(9,autumn,"秋分の日");
+ }
+ if(year>=2000) add(10,nthMonday(10,2),"スポーツの日"); else if(year>=1966) add(10,10,"体育の日");
+ add(11,3,"文化の日"); add(11,23,"勤労感謝の日");
+ // 振替休日・国民の休日（簡易計算）
+ const base=[...h.entries()];
+ base.forEach(([k,name])=>{const d=new Date(k+"T00:00:00"); if(d.getDay()===0){let x=new Date(d); do{x.setDate(x.getDate()+1)}while(h.has(`${year}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`)); h.set(`${year}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`,"振替休日")}});
+ for(let month=1;month<=12;month++){for(let day=2;day<=31;day++){const d=new Date(year,month-1,day);if(d.getMonth()!==month-1)break;const k=`${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;const prev=new Date(d);prev.setDate(day-1);const next=new Date(d);next.setDate(day+1);const pk=`${year}-${String(prev.getMonth()+1).padStart(2,"0")}-${String(prev.getDate()).padStart(2,"0")}`,nk=`${year}-${String(next.getMonth()+1).padStart(2,"0")}-${String(next.getDate()).padStart(2,"0")}`;if(!h.has(k)&&h.has(pk)&&h.has(nk))h.set(k,"国民の休日")}}
+ return h;
+}
+
 function calendar(){
  title("カレンダー");
  const y=state.calendarDate.getFullYear(),m=state.calendarDate.getMonth();
  const key=x=>x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
  const today=key(new Date()),sk=key(state.selectedDate);
+ const holidayMap=new Map();
+ [y-1,y,y+1].forEach(yy=>getJapaneseHolidays(yy).forEach((name,k)=>holidayMap.set(k,name)));
 
  function addCalendarItem(list,item){ if(item&&item.name) list.push(item); }
  function getItems(k){
    const items=[];
-   events.forEach(e=>(e.performances||[]).forEach(p=>{if(p.date===k)addCalendarItem(items,{name:e.name,text:"公演 "+(p.venue||"")+" "+(p.start||""),type:"イベント",cls:"cal-event",entityId:e.id,kind:"event"})}));
+   const cf=state.calendarFilters||{};
+   events.forEach(e=>(e.performances||[]).forEach(p=>{if(cf.event!==false&&p.date===k)addCalendarItem(items,{name:e.name,text:"公演 "+(p.venue||"")+" "+(p.start||""),type:"イベント",cls:"cal-event",entityId:e.id,kind:"event"})}));
    events.forEach(e=>(e.applications||[]).forEach(a=>{
-     if(a.start&&a.start.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status,entityId:e.id,kind:"event"});
-     if(a.end&&a.end.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status,entityId:e.id,kind:"event"});
-     if(a.method==="抽選"&&a.announcement===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
+     if(cf.applicationStart!==false&&a.start&&a.start.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status,entityId:e.id,kind:"event"});
+     if(cf.applicationEnd!==false&&a.end&&a.end.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status,entityId:e.id,kind:"event"});
+     if(cf.announcement!==false&&a.method==="抽選"&&a.announcement===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
    }));
-   products.forEach(p=>{const type=p.type||"POP UP",cls=type==="受注販売"?"cal-order":"cal-popup";if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls,entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls,entityId:p.id,kind:"product"})});
-   schedules.forEach(x=>{if((x.date||String(x.start||"").slice(0,10))===k){const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",entityId:x.id,kind:"schedule"})}});
+   products.forEach(p=>{const type=p.type||"POP UP",isOrder=type==="受注販売";if(type!=="通常販売"&&cf.popup!==false&&!isOrder){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-popup",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-popup",entityId:p.id,kind:"product"})}if(isOrder&&cf.order!==false){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-order",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-order",entityId:p.id,kind:"product"})}});
+   schedules.forEach(x=>{if(cf.schedule!==false&&(x.date||String(x.start||"").slice(0,10))===k){const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",entityId:x.id,kind:"schedule"})}});
    return items;
  }
 
@@ -439,8 +472,8 @@ function calendar(){
 
  let cells="";
  days.forEach(d=>{
-   const k=key(d),items=getItems(k);
-   cells+=`<div class="day ${state.calendarView==="week"?"week-day ":""}${state.calendarView==="month"&&d.getMonth()!=m?"other ":""}${k===today?"today ":""}${k===sk?"selected-day-cell":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
+   const k=key(d),items=getItems(k),holidayName=holidayMap.get(k)||"",weekendClass=d.getDay()===0?"sunday ":d.getDay()===6?"saturday ":"";
+   cells+=`<div class="day ${state.calendarView==="week"?"week-day ":""}${weekendClass}${holidayName?"holiday ":""}${state.calendarView==="month"&&d.getMonth()!=m?"other ":""}${k===today?"today ":""}${k===sk?"selected-day-cell":""}" title="${holidayName?esc(holidayName):""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
    const maxVisible=state.calendarView==="week"?items.length:1;
    items.slice(0,maxVisible).forEach(x=>cells+=`<span class="dot ${x.cls}" title="${esc(x.text)}">● ${esc(x.name)}</span>`);
    if(items.length>maxVisible)cells+=`<span class="more-dot">＋${items.length-maxVisible}件</span>`;
@@ -465,11 +498,15 @@ function calendar(){
      <button type="button" class="calendar-nav-button" onclick="changeCalendarPeriod(1)">›</button>
    </div>
    <div class="calendar-period-label">${displayDate}</div>
+   <div class="calendar-filter-bar"><span class="calendar-filter-label">表示</span><button type="button" class="calendar-filter-chip ${state.calendarFilters.event!==false?"active":""}" onclick="toggleCalendarFilter('event')">公演</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.applicationStart!==false?"active":""}" onclick="toggleCalendarFilter('applicationStart')">受付開始</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.applicationEnd!==false?"active":""}" onclick="toggleCalendarFilter('applicationEnd')">受付終了</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.announcement!==false?"active":""}" onclick="toggleCalendarFilter('announcement')">発表日</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.popup!==false?"active":""}" onclick="toggleCalendarFilter('popup')">POP UP</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.order!==false?"active":""}" onclick="toggleCalendarFilter('order')">受注販売</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.schedule!==false?"active":""}" onclick="toggleCalendarFilter('schedule')">予定</button><button type="button" class="calendar-filter-all" onclick="resetCalendarFilters()">すべて表示</button></div>
    <div class="calendar-legend"><span><i class="legend-dot cal-event"></i>公演</span><span><i class="legend-dot cal-application-start"></i>受付開始</span><span><i class="legend-dot cal-application-end"></i>受付終了</span><span><i class="legend-dot cal-announcement"></i>発表日</span><span><i class="legend-dot cal-popup"></i>POP UP</span><span><i class="legend-dot cal-order"></i>受注販売</span><span><i class="legend-dot cal-schedule"></i>予定</span></div>
    <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
    <div class="cal-grid ${state.calendarView==="week"?"cal-grid-week":""}">${cells}</div>
    <div class="selected-day"><div class="section selected-day-heading"><h2>${date(sk)}</h2><div class="selected-day-actions"><span class="count">${selectedItems.length}件</span><button type="button" class="calendar-add-button" onclick="newEvent('${sk}')">＋イベント</button><button type="button" class="calendar-add-button" onclick="newSchedule('${sk}')">＋予定</button></div></div>${details||'<div class="empty">この日の予定はありません。</div>'}</div>`;
 }
+
+function toggleCalendarFilter(kind){state.calendarFilters=state.calendarFilters||{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,schedule:true};state.calendarFilters[kind]=state.calendarFilters[kind]===false;render()}
+function resetCalendarFilters(){state.calendarFilters={event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,schedule:true};render()}
 function toggleCalendarView(){state.calendarView=state.calendarView==="month"?"week":"month";render()}
 function changeCalendarPeriod(n){
  if(state.calendarView==="week"){
