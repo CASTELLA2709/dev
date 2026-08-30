@@ -2,7 +2,7 @@ const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
 schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false}};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false}};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
@@ -410,96 +410,76 @@ window.openCalendarDetail=openCalendarDetail;
 function calendar(){
  title("カレンダー");
  const y=state.calendarDate.getFullYear(),m=state.calendarDate.getMonth();
- const first=new Date(y,m,1),startDate=new Date(y,m,1-first.getDay()),days=[];
- for(let i=0;i<42;i++){const d=new Date(startDate);d.setDate(startDate.getDate()+i);days.push(d)}
  const key=x=>x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
  const today=key(new Date()),sk=key(state.selectedDate);
 
- function addCalendarItem(list,item){
-   if(item && item.name) list.push(item);
- }
+ function addCalendarItem(list,item){ if(item&&item.name) list.push(item); }
  function getItems(k){
    const items=[];
-   events.forEach(e=>(e.performances||[]).forEach(p=>{
-     if(p.date===k) addCalendarItem(items,{name:e.name,text:"公演 "+(p.venue||"")+" "+(p.start||""),type:"イベント",cls:"cal-event",entityId:e.id,kind:"event"});
-   }));
+   events.forEach(e=>(e.performances||[]).forEach(p=>{if(p.date===k)addCalendarItem(items,{name:e.name,text:"公演 "+(p.venue||"")+" "+(p.start||""),type:"イベント",cls:"cal-event",entityId:e.id,kind:"event"})}));
    events.forEach(e=>(e.applications||[]).forEach(a=>{
-     const statusCls=(a.status||"未応募").replace(/[^\wぁ-んァ-ヶ一-龠]/g,"");
-     if(a.start&&a.start.slice(0,10)===k)
-       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status,entityId:e.id,kind:"event"});
-     if(a.end&&a.end.slice(0,10)===k)
-       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status,entityId:e.id,kind:"event"});
-     if(a.method==="抽選"&&a.announcement===k)
-       addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
+     if(a.start&&a.start.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付開始",type:"申込開始",cls:"cal-application-start",status:a.status,entityId:e.id,kind:"event"});
+     if(a.end&&a.end.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status,entityId:e.id,kind:"event"});
+     if(a.method==="抽選"&&a.announcement===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
    }));
-   products.forEach(p=>{
-     const type=p.type||"POP UP";
-     const cls=type==="受注販売"?"cal-order":"cal-popup";
-     if(p.start===k) addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls,entityId:p.id,kind:"product"});
-     if(p.end===k) addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls,entityId:p.id,kind:"product"});
-   });
-   schedules.forEach(x=>{
-     if((x.date||String(x.start||"").slice(0,10))===k) { const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / "); addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",scheduleId:x.id,entityId:x.id,kind:"schedule"}); }
-   });
+   products.forEach(p=>{const type=p.type||"POP UP",cls=type==="受注販売"?"cal-order":"cal-popup";if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls,entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls,entityId:p.id,kind:"product"})});
+   schedules.forEach(x=>{if((x.date||String(x.start||"").slice(0,10))===k){const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",entityId:x.id,kind:"schedule"})}});
    return items;
  }
+
+ const base=new Date(state.calendarDate);
+ let days=[];
+ if(state.calendarView==="week"){
+   const start=new Date(state.selectedDate); start.setHours(0,0,0,0); start.setDate(start.getDate()-start.getDay());
+   for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}
+ }else{
+   const first=new Date(y,m,1),startDate=new Date(y,m,1-first.getDay());
+   for(let i=0;i<42;i++){const d=new Date(startDate);d.setDate(startDate.getDate()+i);days.push(d)}
+ }
+
  let cells="";
  days.forEach(d=>{
    const k=key(d),items=getItems(k);
-   cells+=`<div class="day ${d.getMonth()!=m?"other":""} ${k===today?"today":""} ${k===sk?"selected-day-cell":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
-   items.slice(0,3).forEach(x=>cells+=`<span class="dot ${x.cls}" title="${esc(x.text)}">● ${esc(x.name)}</span>`);
-   if(items.length>3) cells+=`<span class="more-dot">＋${items.length-3}件</span>`;
+   cells+=`<div class="day ${state.calendarView==="week"?"week-day ":""}${state.calendarView==="month"&&d.getMonth()!=m?"other ":""}${k===today?"today ":""}${k===sk?"selected-day-cell":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
+   const maxVisible=state.calendarView==="week"?items.length:1;
+   items.slice(0,maxVisible).forEach(x=>cells+=`<span class="dot ${x.cls}" title="${esc(x.text)}">● ${esc(x.name)}</span>`);
+   if(items.length>maxVisible)cells+=`<span class="more-dot">＋${items.length-maxVisible}件</span>`;
    cells+='</div>';
  });
 
  const selectedItems=getItems(sk);
- const details=selectedItems.map(x=>`
-   <div class="card event-group ${x.cls}">
-     <div class="calendar-detail-head">
-       <strong>${esc(x.name)}</strong>
-       <span class="calendar-type">${esc(x.type)}</span>
-     </div>
-     <div>${esc(x.text)}${x.status?`　<span class="calendar-status">${esc(x.status)}</span>`:""}</div>
-     ${x.entityId?`<div class="calendar-detail-actions"><button type="button" class="primary calendar-detail-button" onclick="event.stopPropagation(); openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})">${x.kind==="event"?"イベント詳細を見る":x.kind==="product"?"販売詳細を見る":"予定詳細を見る"}</button></div>`:""}
-   </div>`).join("");
+ const details=selectedItems.map(x=>`<div class="card event-group ${x.cls}"><div class="calendar-detail-head"><strong>${esc(x.name)}</strong><span class="calendar-type">${esc(x.type)}</span></div><div>${esc(x.text)}${x.status?`　<span class="calendar-status">${esc(x.status)}</span>`:""}</div>${x.entityId?`<div class="calendar-detail-actions"><button type="button" class="primary calendar-detail-button" onclick="event.stopPropagation(); openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})">${x.kind==="event"?"イベント詳細を見る":x.kind==="product"?"販売詳細を見る":"予定詳細を見る"}</button></div>`:""}</div>`).join("");
+ const displayDate=state.calendarView==="week"?`${date(key(days[0]))} ～ ${date(key(days[6]))}`:`${y}年 ${m+1}月`;
+ const headerYear=state.calendarView==="week"?state.selectedDate.getFullYear():y;
+ const headerMonth=state.calendarView==="week"?state.selectedDate.getMonth():m;
 
  document.getElementById("screen").innerHTML=`
    <div class="calendar-head">
-     <button type="button" class="calendar-nav-button" onclick="changeMonth(-1)">‹</button>
+     <button type="button" class="calendar-nav-button" onclick="changeCalendarPeriod(-1)">‹</button>
      <div class="calendar-selects">
-       <label class="calendar-select-wrap">
-         <select class="calendar-select" onchange="changeCalendarYear(this.value)">
-           ${Array.from({length:21},(_,i)=>y-10+i).map(yy=>`<option value="${yy}" ${yy===y?"selected":""}>${yy}年</option>`).join("")}
-         </select>
-         <span class="calendar-select-arrow">⌄</span>
-       </label>
-       <label class="calendar-select-wrap month-select-wrap">
-         <select class="calendar-select" onchange="changeCalendarMonth(this.value)">
-           ${Array.from({length:12},(_,i)=>i).map(mm=>`<option value="${mm}" ${mm===m?"selected":""}>${mm+1}月</option>`).join("")}
-         </select>
-         <span class="calendar-select-arrow">⌄</span>
-       </label>
+       <label class="calendar-select-wrap"><select class="calendar-select" onchange="changeCalendarYear(this.value)">${Array.from({length:21},(_,i)=>headerYear-10+i).map(yy=>`<option value="${yy}" ${yy===headerYear?"selected":""}>${yy}年</option>`).join("")}</select><span class="calendar-select-arrow">⌄</span></label>
+       <label class="calendar-select-wrap month-select-wrap"><select class="calendar-select" onchange="changeCalendarMonth(this.value)">${Array.from({length:12},(_,i)=>i).map(mm=>`<option value="${mm}" ${mm===headerMonth?"selected":""}>${mm+1}月</option>`).join("")}</select><span class="calendar-select-arrow">⌄</span></label>
      </div>
      <button type="button" class="calendar-today-button" onclick="goToToday()">今日</button>
-     <button type="button" class="calendar-nav-button" onclick="changeMonth(1)">›</button>
+     <button type="button" class="calendar-view-toggle" onclick="toggleCalendarView()">${state.calendarView==="month"?"週表示":"月表示"}</button>
+     <button type="button" class="calendar-nav-button" onclick="changeCalendarPeriod(1)">›</button>
    </div>
-   <div class="calendar-legend">
-     <span><i class="legend-dot cal-event"></i>公演</span>
-     <span><i class="legend-dot cal-application-start"></i>受付開始</span>
-     <span><i class="legend-dot cal-application-end"></i>受付終了</span>
-    <span><i class="legend-dot cal-announcement"></i>発表日</span>
-     <span><i class="legend-dot cal-popup"></i>POP UP</span>
-     <span><i class="legend-dot cal-order"></i>受注販売</span>
-     <span><i class="legend-dot cal-schedule"></i>予定</span>
-   </div>
+   <div class="calendar-period-label">${displayDate}</div>
+   <div class="calendar-legend"><span><i class="legend-dot cal-event"></i>公演</span><span><i class="legend-dot cal-application-start"></i>受付開始</span><span><i class="legend-dot cal-application-end"></i>受付終了</span><span><i class="legend-dot cal-announcement"></i>発表日</span><span><i class="legend-dot cal-popup"></i>POP UP</span><span><i class="legend-dot cal-order"></i>受注販売</span><span><i class="legend-dot cal-schedule"></i>予定</span></div>
    <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
-   <div class="cal-grid">${cells}</div>
-   <div class="selected-day">
-     <div class="section selected-day-heading"><h2>${date(sk)}</h2><div class="selected-day-actions"><span class="count">${selectedItems.length}件</span><button type="button" class="calendar-add-button" onclick="newEvent('${sk}')">＋イベント</button><button type="button" class="calendar-add-button" onclick="newSchedule('${sk}')">＋予定</button></div></div>
-     ${details||'<div class="empty">この日の予定はありません。</div>'}
-   </div>`;
+   <div class="cal-grid ${state.calendarView==="week"?"cal-grid-week":""}">${cells}</div>
+   <div class="selected-day"><div class="section selected-day-heading"><h2>${date(sk)}</h2><div class="selected-day-actions"><span class="count">${selectedItems.length}件</span><button type="button" class="calendar-add-button" onclick="newEvent('${sk}')">＋イベント</button><button type="button" class="calendar-add-button" onclick="newSchedule('${sk}')">＋予定</button></div></div>${details||'<div class="empty">この日の予定はありません。</div>'}</div>`;
 }
-function changeMonth(n){state.calendarDate.setMonth(state.calendarDate.getMonth()+n);render()}
+function toggleCalendarView(){state.calendarView=state.calendarView==="month"?"week":"month";render()}
+function changeCalendarPeriod(n){
+ if(state.calendarView==="week"){
+   const d=new Date(state.selectedDate);d.setDate(d.getDate()+n*7);state.selectedDate=d;state.calendarDate=new Date(d.getFullYear(),d.getMonth(),1);
+ }else{
+   const d=new Date(state.calendarDate);d.setMonth(d.getMonth()+n);state.calendarDate=d;
+ }
+ render();
+}
+function changeMonth(n){changeCalendarPeriod(n)}
 function changeCalendarYear(year){
   const d=new Date(state.calendarDate);
   d.setFullYear(Number(year));

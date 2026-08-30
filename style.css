@@ -975,3 +975,15 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 .calendar-add-button{border:1px solid #d9dfe7;background:#fff;color:#333;border-radius:7px;padding:5px 8px;font-size:12px;line-height:1;cursor:pointer;white-space:nowrap}
 .calendar-add-button:hover{background:#f6f8fa}
 @media(max-width:600px){.selected-day-actions{gap:4px}.calendar-add-button{padding:5px 7px;font-size:11px}}
+
+/* カレンダー：月表示／週表示切り替え */
+.calendar-view-toggle{background:#fff;color:#333;border:1px solid #d7d7dc;border-radius:7px;height:34px;padding:0 9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.calendar-view-toggle:hover{background:#f6f8fa}
+.calendar-period-label{text-align:center;font-size:13px;font-weight:700;color:#444;margin:2px 0 8px}
+.cal-grid-week .week-day{min-height:150px}
+@media(max-width:600px){
+  .calendar-view-toggle{height:32px;padding:0 7px;font-size:11px}
+  .calendar-period-label{font-size:12px}
+  .cal-grid-week .week-day{min-height:105px}
+  .cal-grid-week .week-day .dot{font-size:8px;margin-top:5px}
+}
