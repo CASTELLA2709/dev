@@ -1,3 +1,18 @@
+
+// スマホの横向き回転を抑止（PWA/対応ブラウザで有効）
+function lockPortraitOrientation(){
+  try {
+    if (screen.orientation && typeof screen.orientation.lock === "function") {
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+      if (isStandalone) {
+        screen.orientation.lock("portrait").catch(() => {});
+      }
+    }
+  } catch (e) {}
+}
+
+window.addEventListener("load", lockPortraitOrientation);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) lockPortraitOrientation(); });
 const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1"};
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
@@ -109,14 +124,57 @@ function newOrder(){closeAdd();state.returnPage=state.page;state.page="orderForm
 function newSchedule(prefillDate=""){closeAdd();state.returnPage=state.page;state.page="scheduleForm";state.scheduleId=null;state.prefillScheduleDate=prefillDate||"";render()}
 function openEvent(id){state.returnPage=state.page;state.eventId=id;state.page="event";render()}
 function home(){
- const today=new Date(); today.setHours(0,0,0,0);
- const recentEvents=events.map(e=>{
-   const dates=(e.performances||[]).map(p=>p.date).filter(Boolean).map(d=>new Date(d+"T00:00:00")).filter(d=>!isNaN(d)&&d>=today);
-   return {event:e,nextDate:dates.length?new Date(Math.min(...dates.map(d=>d.getTime()))):null};
- }).filter(x=>x.nextDate).sort((a,b)=>a.nextDate-b.nextDate).slice(0,3).map(x=>x.event);
+ const today=new Date();
+ today.setHours(0,0,0,0);
+ const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+ const notifications={event:[],product:[],schedule:[]};
+ const timeLabel=v=>{if(!v)return"";const str=String(v);const m=str.match(/T(\d{2}:\d{2})/);return m?` ${m[1]}`:""};
+ const add=(group,type,name,text,detailText="",entityId=null,kind="")=>notifications[group].push({type,name,text,detail:detailText,entityId,kind});
+
+ // イベント：受付開始日時・受付終了日時・発表日・公演日
+ events.forEach(e=>{
+   (e.applications||[]).forEach(a=>{
+     if(String(a.start||"").slice(0,10)===todayKey)add("event","受付開始",e.name,`受付開始${timeLabel(a.start)}`,a.name||"",e.id,"event");
+     if(String(a.end||"").slice(0,10)===todayKey)add("event","受付終了",e.name,`受付終了${timeLabel(a.end)}`,a.name||"",e.id,"event");
+     if(String(a.announcement||"").slice(0,10)===todayKey)add("event","発表日",e.name,"発表日",a.name||"",e.id,"event");
+   });
+   (e.performances||[]).forEach(p=>{
+     if(p.date===todayKey)add("event","公演日",e.name,`公演日${p.start?` ${p.start}`:""}`,p.venue||"",e.id,"event");
+   });
+ });
+
+ // グッズ・販売：受注販売開始日・受注販売終了日・商品関連の予定
+ products.forEach(p=>{
+   if((p.type||"POP UP")==="受注販売"){
+     if(p.start===todayKey)add("product","受注販売開始日",p.name,"受注販売開始日",p.venue||"",p.id,"product");
+     if(p.end===todayKey)add("product","受注販売終了日",p.name,"受注販売終了日",p.venue||"",p.id,"product");
+   }
+ });
+ schedules.forEach(x=>{
+   const d=x.date||String(x.start||"").slice(0,10);
+   if(d===todayKey){
+     const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");
+     const group=x.type==="商品関連"?"product":"schedule";
+     add(group,"予定",x.name,times||"予定",x.related||"",x.id,"schedule");
+   }
+ });
+
+ const renderNotifications=(group,emptyText)=>{
+   const list=notifications[group];
+   if(!list.length)return `<div class="notification-empty">${emptyText}</div>`;
+   return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail('${n.kind}','${n.entityId}')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong></div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
+ };
+ const total=notifications.event.length+notifications.product.length+notifications.schedule.length;
  title("ホーム");
- document.getElementById("screen").innerHTML=`<div class="hero"><h2>抽選管理</h2><div class="sub">イベントを中心に、公演日と申込・注文をまとめて管理</div></div><div class="grid"><div class="card stat" onclick="go('events')"><strong>${events.length}</strong><span>イベント</span></div><div class="card stat" onclick="go('products')"><strong>${products.length}</strong><span>商品</span></div><div class="card stat"><strong>${events.reduce((n,e)=>n+(e.applications||[]).length,0)}</strong><span class="home-application-label">申込・注文</span></div><div class="card stat" onclick="go('schedules')"><strong>${schedules.length}</strong><span>予定</span></div></div><div class="section"><h2>直近のイベント</h2><span class="count">${recentEvents.length}件</span></div>${recentEvents.length?`<div class="list">${recentEvents.map(eventCard).join("")}</div>`:`<div class="empty">今後の公演予定があるイベントはありません。</div>`}`
+ document.getElementById("screen").innerHTML=`
+   <div class="hero"><h2>抽選管理</h2><div class="sub">今日の予定・受付・発表などをまとめて確認</div></div>
+   <div class="section home-notification-title"><h2>通知</h2><span class="count">${total}件</span></div>
+   <div class="home-notification-date">${date(todayKey)}</div>
+   <div class="notification-section"><h3>◆イベント</h3>${renderNotifications("event","当日のイベント通知はありません。")}</div>
+   <div class="notification-section"><h3>◆グッズ・販売</h3>${renderNotifications("product","当日のグッズ・販売通知はありません。")}</div>
+   <div class="notification-section"><h3>◆予定</h3>${renderNotifications("schedule","当日の予定はありません。")}</div>`;
 }
+
 function applicationStatusSummary(e){
  const apps=e.applications||[];
  if(!apps.length)return `<span class="status status-none">申込なし</span>`;
@@ -252,6 +310,8 @@ function productsList(){
  document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${block("soon","期限が一週間以内",soon,"soon-products")}${block("comfortable","期限に余裕がある",comfortable,"comfortable-products")}${block("expired","期限が過ぎたもの",expired,"expired-products")}${block("general","一般販売",general,"general-products")}${block("purchased","購入済み",purchased,"purchased-products")}${!list.length?`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`:""}`;
 }
 function openProduct(i){state.returnPage="products";state.productId=i;state.page="product";render()}
+function openHomeNotificationDetail(kind,id){state.returnPage="home";if(kind==="event"){state.eventId=id;state.page="event"}else if(kind==="product"){state.productId=id;state.page="product"}else if(kind==="schedule"){state.scheduleId=id;state.page="schedule"}else{return}render()}
+
 function toggleProductPurchased(id, checked){
  const p=products.find(x=>x.id==id);
  if(!p)return;
