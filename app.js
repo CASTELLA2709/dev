@@ -103,10 +103,12 @@ function goBack(){
 }
 document.getElementById("addButton").onclick=()=>document.getElementById("addModal").classList.remove("hidden");
 function closeAdd(){document.getElementById("addModal").classList.add("hidden")}
-function newEvent(){closeAdd();state.returnPage=state.page;state.page="eventForm";state.eventId=null;render()}
-function newProduct(){closeAdd();state.returnPage=state.page;state.page="productForm";state.productId=null;render()}
+function newEvent(){closeAdd();state.returnPage=state.page;state.calendarPrefillDate="";state.page="eventForm";state.eventId=null;render()}
+function newEventFromCalendar(){state.returnPage="calendar";state.calendarPrefillDate=calendarKey(state.selectedDate);state.page="eventForm";state.eventId=null;render()}
+function newProduct(){closeAdd();state.returnPage=state.page;state.calendarPrefillDate="";state.page="productForm";state.productId=null;render()}
 function newOrder(){closeAdd();state.returnPage=state.page;state.page="orderForm";state.orderId=null;state.saleItemIndex=null;render()}
-function newSchedule(){closeAdd();state.returnPage=state.page;state.page="scheduleForm";state.scheduleId=null;render()}
+function newSchedule(){closeAdd();state.returnPage=state.page;state.calendarPrefillDate="";state.page="scheduleForm";state.scheduleId=null;render()}
+function newScheduleFromCalendar(){state.returnPage="calendar";state.calendarPrefillDate=calendarKey(state.selectedDate);state.page="scheduleForm";state.scheduleId=null;render()}
 function openEvent(id){state.returnPage=state.page;state.eventId=id;state.page="event";render()}
 function home(){
  const today=new Date(); today.setHours(0,0,0,0);
@@ -214,7 +216,8 @@ function eventDetail(){
  <div class="actions"><button class="danger" onclick="deleteEvent('${e.id}')">イベントを削除</button></div>`;
 }
 function editEvent(id){state.eventId=id;state.page="eventForm";render()}
-function eventForm(){const e=events.find(x=>x.id==state.eventId)||{name:"",type:"ライブ",performers:"",url:"",memo:"",performances:[{}]};title(state.eventId?"イベント編集":"イベント登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="eventForm"><div class="group"><label>イベント名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(e.name)}"></div><div class="group"><label>イベント種別</label><select class="input" name="type">${["ライブ","舞台","イベント","その他"].map(x=>`<option ${x==e.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>出演者</label><input class="input" name="performers" value="${esc(e.performers)}"></div><div class="group"><label>イベントURL</label><input class="input" name="url" type="url" value="${esc(e.url)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(e.memo)}</textarea></div><div class="section"><h2>公演日</h2><span class="count">1件以上必須</span></div><div id="performanceList">${e.performances.length?e.performances.map(perf).join(""):perf({})}</div><button type="button" class="secondary" onclick="addPerformance()">＋ 公演日を追加</button><button class="primary" style="margin-top:10px">${state.eventId?"変更を保存":"イベントを登録"}</button></form>`;document.getElementById("eventForm").onsubmit=saveEvent}
+function calendarKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function eventForm(){const e=events.find(x=>x.id==state.eventId)||{name:"",type:"ライブ",performers:"",url:"",memo:"",performances:[{date:state.calendarPrefillDate||""}]};title(state.eventId?"イベント編集":"イベント登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="eventForm"><div class="group"><label>イベント名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(e.name)}"></div><div class="group"><label>イベント種別</label><select class="input" name="type">${["ライブ","舞台","イベント","その他"].map(x=>`<option ${x==e.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>出演者</label><input class="input" name="performers" value="${esc(e.performers)}"></div><div class="group"><label>イベントURL</label><input class="input" name="url" type="url" value="${esc(e.url)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(e.memo)}</textarea></div><div class="section"><h2>公演日</h2><span class="count">1件以上必須</span></div><div id="performanceList">${e.performances.length?e.performances.map(perf).join(""):perf({})}</div><button type="button" class="secondary" onclick="addPerformance()">＋ 公演日を追加</button><button class="primary" style="margin-top:10px">${state.eventId?"変更を保存":"イベントを登録"}</button></form>`;document.getElementById("eventForm").onsubmit=saveEvent}
 function perf(p={}){return `<div class="performance"><div class="performance-title"><b>公演日</b><button type="button" class="remove" onclick="this.closest('.performance').remove()">削除</button></div><div class="group"><label>日付 <b class="req">必須</b></label><input class="input" data-p="date" type="date" required value="${esc(p.date||"")}"></div><div class="time-grid"><div class="group"><label>開場時間</label><input class="input" data-p="open" type="time" value="${esc(p.open||"")}"></div><div class="group"><label>開演時間</label><input class="input" data-p="start" type="time" value="${esc(p.start||"")}"></div></div><div class="group"><label>会場</label><input class="input" data-p="venue" value="${esc(p.venue||"")}"></div><div class="group"><label>メモ</label><textarea class="input textarea" data-p="memo">${esc(p.memo||"")}</textarea></div></div>`}
 function addPerformance(){document.getElementById("performanceList").insertAdjacentHTML("beforeend",perf({}))}
 function saveEvent(ev){ev.preventDefault();const f=new FormData(ev.target),rows=[...document.querySelectorAll(".performance")];if(!rows.length){alert("公演日は1件以上必要です");return}const performances=rows.map(r=>{const p={};r.querySelectorAll("[data-p]").forEach(x=>p[x.dataset.p]=x.value);return p});if(performances.some(x=>!x.date)){alert("公演日の日付は必須です");return}const d={name:String(f.get("name")).trim(),type:f.get("type"),performers:String(f.get("performers")||""),url:String(f.get("url")||""),memo:String(f.get("memo")||""),performances};if(state.eventId){Object.assign(events.find(x=>x.id==state.eventId),d)}else{const e={id:id(),...d,applications:[]};events.unshift(e);state.eventId=e.id}save(KEY.events,events);state.page="event";render()}
@@ -284,7 +287,12 @@ function productDetail(){
  <button class="primary" style="margin-top:10px" onclick="addSaleItem('${p.id}')">＋ 買いたい商品を追加</button>
  <div class="actions"><button class="danger" onclick="deleteProduct('${p.id}')">販売情報を削除</button></div>`;
 }
-function editProduct(i){state.productId=i;state.returnPage="product";state.page="productForm";render()}
+function editProduct(i){
+  state.productId=i;
+  state.returnPage=state.returnPage||"products";
+  state.page="productForm";
+  render();
+}
 function productForm(){
  const p=products.find(x=>x.id==state.productId)||{name:"",type:"POP UP",start:"",end:"",venue:"",url:"",memo:"",items:[]};
  title(state.productId?"販売情報編集":"POP UP・販売登録",true);
@@ -309,10 +317,22 @@ function saveProduct(ev){
  if(!d.name){alert("販売名を入力してください");return}
  if(state.productId) Object.assign(products.find(p=>p.id==state.productId),d);
  else {const p={id:id(),...d,items:[]};products.unshift(p);state.productId=p.id}
- save(KEY.products,products);state.page="product";render();
+ save(KEY.products,products);
+state.page="product";
+render();
 }
-function addSaleItem(pid){state.productId=pid;state.saleItemIndex=null;state.page="saleItemForm";state.returnPage="product";render()}
-function editSaleItem(pid,index){state.productId=pid;state.saleItemIndex=index;state.page="saleItemForm";state.returnPage="product";render()}
+function addSaleItem(pid){
+  state.productId=pid;
+  state.saleItemIndex=null;
+  state.page="saleItemForm";
+  render();
+}
+function editSaleItem(pid,index){
+  state.productId=pid;
+  state.saleItemIndex=index;
+  state.page="saleItemForm";
+  render();
+}
 function saleItemForm(){
  const p=products.find(x=>x.id==state.productId);
  if(!p){go("products");return}
@@ -343,7 +363,10 @@ function saveSaleItem(ev){
    item.id=p.items[state.saleItemIndex].id||item.id;
    p.items[state.saleItemIndex]=item;
  }else{p.items.push(item)}
- save(KEY.products,products);state.saleItemIndex=null;state.page="product";render();
+ save(KEY.products,products);
+state.saleItemIndex=null;
+state.page="product";
+render();
 }
 function deleteSaleItem(pid,index){
  if(!confirm("この商品を削除しますか？"))return;
@@ -375,7 +398,7 @@ function applyFilter(kind){state.filters[kind]={type:document.getElementById("fi
 function openSchedule(i){state.returnPage="schedules";state.scheduleId=i;state.page="schedule";render()} function openScheduleFromCalendar(i){state.returnPage="calendar";state.scheduleId=i;state.page="schedule";render()} window.openScheduleFromCalendar=openScheduleFromCalendar;
 function scheduleDetail(){const s=schedules.find(x=>x.id==state.scheduleId);if(!s){go("schedules");return}const d=s.date||String(s.start||"").slice(0,10);const meeting=s.meetingTime||(s.start?String(s.start).split("T")[1]:"");const startTime=s.startTime||(s.start?String(s.start).split("T")[1]:"");title("予定詳細",true);document.getElementById("screen").innerHTML=`<div class="hero"><span class="badge">${esc(s.type)}</span><h2>${esc(s.name)}</h2></div><div class="card">${detail("予定日",date(d))}${detail("集合時間",meeting)}${detail("集合場所",s.meetingPlace||"")}${detail("予定開始時刻",startTime)}${detail("予定種別",s.type)}${detail("関連情報",s.related)}${detail("メモ",s.memo)}</div><div class="actions"><button class="secondary" onclick="editSchedule('${s.id}')">編集</button><button class="danger" onclick="deleteSchedule('${s.id}')">削除</button></div>`}
 function editSchedule(i){state.scheduleId=i;/* 予定詳細へ入る前の戻り先（一覧/カレンダー）を保持 */state.page="scheduleForm";render()}
-function scheduleForm(){const old=schedules.find(x=>x.id==state.scheduleId)||{};const s={name:"",date:"",meetingTime:"",startTime:"",type:"イベント関連",related:"",memo:"",...old};if(!s.date&&s.start)s.date=String(s.start).slice(0,10);if(!s.meetingTime&&s.start)s.meetingTime=String(s.start).split("T")[1]||"";if(!s.startTime&&s.start)s.startTime=String(s.start).split("T")[1]||"";title(state.scheduleId?"予定編集":"予定登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="scheduleForm"><div class="group"><label>予定名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(s.name)}"></div><div class="group"><label>予定日 <b class="req">必須</b></label><input class="input" name="date" type="date" required value="${esc(s.date)}"></div><div class="time-grid"><div class="group"><label>集合時間</label><input class="input" name="meetingTime" type="time" value="${esc(s.meetingTime)}"></div><div class="group"><label>予定開始時刻</label><input class="input" name="startTime" type="time" value="${esc(s.startTime)}"></div></div><div class="group"><label>集合場所</label><input class="input" name="meetingPlace" value="${esc(s.meetingPlace||"")}"></div><div class="group"><label>予定種別</label><select class="input" name="type">${["イベント関連","商品関連","申込・注文関連","その他"].map(x=>`<option ${x==s.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>関連情報</label><input class="input" name="related" value="${esc(s.related)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(s.memo)}</textarea></div><button class="primary">保存</button></form>`;document.getElementById("scheduleForm").onsubmit=saveSchedule}
+function scheduleForm(){const old=schedules.find(x=>x.id==state.scheduleId)||{};const s={name:"",date:state.calendarPrefillDate||"",meetingTime:"",startTime:"",type:"イベント関連",related:"",memo:"",...old};if(!s.date&&s.start)s.date=String(s.start).slice(0,10);if(!s.meetingTime&&s.start)s.meetingTime=String(s.start).split("T")[1]||"";if(!s.startTime&&s.start)s.startTime=String(s.start).split("T")[1]||"";title(state.scheduleId?"予定編集":"予定登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="scheduleForm"><div class="group"><label>予定名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(s.name)}"></div><div class="group"><label>予定日 <b class="req">必須</b></label><input class="input" name="date" type="date" required value="${esc(s.date)}"></div><div class="time-grid"><div class="group"><label>集合時間</label><input class="input" name="meetingTime" type="time" value="${esc(s.meetingTime)}"></div><div class="group"><label>予定開始時刻</label><input class="input" name="startTime" type="time" value="${esc(s.startTime)}"></div></div><div class="group"><label>集合場所</label><input class="input" name="meetingPlace" value="${esc(s.meetingPlace||"")}"></div><div class="group"><label>予定種別</label><select class="input" name="type">${["イベント関連","商品関連","申込・注文関連","その他"].map(x=>`<option ${x==s.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>関連情報</label><input class="input" name="related" value="${esc(s.related)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(s.memo)}</textarea></div><button class="primary">保存</button></form>`;document.getElementById("scheduleForm").onsubmit=saveSchedule}
 function saveSchedule(ev){ev.preventDefault();const f=new FormData(ev.target),d={name:String(f.get("name")).trim(),date:f.get("date"),meetingTime:f.get("meetingTime"),meetingPlace:String(f.get("meetingPlace")||"").trim(),startTime:f.get("startTime"),type:f.get("type"),related:String(f.get("related")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("予定名を入力してください");return}if(!d.date){alert("予定日を入力してください");return}if(state.scheduleId)Object.assign(schedules.find(s=>s.id==state.scheduleId),d);else{const s={id:id(),...d};schedules.unshift(s);state.scheduleId=s.id}save(KEY.schedules,schedules);state.page="schedule";render()}
 function deleteSchedule(i){if(!confirm("予定を削除しますか？"))return;schedules=schedules.filter(s=>s.id!=i);save(KEY.schedules,schedules);go("schedules")}
 
@@ -412,12 +435,6 @@ function calendar(){
      if(a.method==="抽選"&&a.announcement===k)
        addCalendarItem(items,{name:e.name,text:(a.name||"申込・注文")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
    }));
-   products.forEach(p=>{
-     const type=p.type||"POP UP";
-     const cls=type==="受注販売"?"cal-order":"cal-popup";
-     if(p.start===k) addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls,entityId:p.id,kind:"product"});
-     if(p.end===k) addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls,entityId:p.id,kind:"product"});
-   });
    schedules.forEach(x=>{
      if((x.date||String(x.start||"").slice(0,10))===k) { const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / "); addCalendarItem(items,{name:x.name,text:times||"予定",type:"予定",cls:"cal-schedule",scheduleId:x.id,entityId:x.id,kind:"schedule"}); }
    });
@@ -426,7 +443,7 @@ function calendar(){
  let cells="";
  days.forEach(d=>{
    const k=key(d),items=getItems(k);
-   cells+=`<div class="day ${d.getMonth()!=m?"other":""} ${k===today?"today":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
+   cells+=`<div class="day ${d.getMonth()!=m?"other":""} ${k===today?"today":""} ${k===sk?"selected-day-cell":""}" onclick="selectCalendar('${k}')"><b>${d.getDate()}</b>`;
    items.slice(0,3).forEach(x=>cells+=`<span class="dot ${x.cls}" title="${esc(x.text)}">● ${esc(x.name)}</span>`);
    if(items.length>3) cells+=`<span class="more-dot">＋${items.length-3}件</span>`;
    cells+='</div>';
@@ -468,14 +485,12 @@ function calendar(){
      <span><i class="legend-dot cal-application-start"></i>受付開始</span>
      <span><i class="legend-dot cal-application-end"></i>受付終了</span>
     <span><i class="legend-dot cal-announcement"></i>発表日</span>
-     <span><i class="legend-dot cal-popup"></i>POP UP</span>
-     <span><i class="legend-dot cal-order"></i>受注販売</span>
-     <span><i class="legend-dot cal-schedule"></i>予定</span>
+      <span><i class="legend-dot cal-schedule"></i>予定</span>
    </div>
    <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
    <div class="cal-grid">${cells}</div>
    <div class="selected-day">
-     <div class="section"><h2>${date(sk)}</h2><span class="count">${selectedItems.length}件</span></div>
+     <div class="section calendar-selected-heading"><div><h2>${date(sk)}</h2><span class="count">${selectedItems.length}件</span></div><div class="calendar-add-actions"><button type="button" class="secondary calendar-add-button" onclick="newEventFromCalendar()">＋ イベントを追加</button><button type="button" class="secondary calendar-add-button" onclick="newScheduleFromCalendar()">＋ 予定を追加</button></div></div>
      ${details||'<div class="empty">この日の予定はありません。</div>'}
    </div>`;
 }
