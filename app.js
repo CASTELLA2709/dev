@@ -126,55 +126,64 @@ function openEvent(id){state.returnPage=state.page;state.eventId=id;state.page="
 function home(){
  const today=new Date();
  today.setHours(0,0,0,0);
- const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
- const notifications={event:[],product:[],schedule:[]};
+ const dayKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+ const days=Array.from({length:7},(_,i)=>{const d=new Date(today);d.setDate(d.getDate()+i);return {date:d,key:dayKey(d),offset:i}});
+ const notifications=days.map(d=>({date:d.date,key:d.key,offset:d.offset,event:[],product:[],schedule:[]}));
  const timeLabel=v=>{if(!v)return"";const str=String(v);const m=str.match(/T(\d{2}:\d{2})/);return m?` ${m[1]}`:""};
- const add=(group,type,name,text,detailText="",entityId=null,kind="")=>notifications[group].push({type,name,text,detail:detailText,entityId,kind});
+ const add=(day,group,type,name,text,detailText="",entityId=null,kind="")=>{
+   if(!day)return;
+   notifications[day.offset][group].push({type,name,text,detail:detailText,entityId,kind});
+ };
+ const dayFor=v=>{const k=String(v||"").slice(0,10);return notifications.find(d=>d.key===k)};
 
  // イベント：受付開始日時・受付終了日時・発表日・公演日
  events.forEach(e=>{
    (e.applications||[]).forEach(a=>{
-     if(String(a.start||"").slice(0,10)===todayKey)add("event","受付開始",e.name,`受付開始${timeLabel(a.start)}`,a.name||"",e.id,"event");
-     if(String(a.end||"").slice(0,10)===todayKey)add("event","受付終了",e.name,`受付終了${timeLabel(a.end)}`,a.name||"",e.id,"event");
-     if(String(a.announcement||"").slice(0,10)===todayKey)add("event","発表日",e.name,"発表日",a.name||"",e.id,"event");
+     const startDay=dayFor(a.start); if(startDay)add(startDay,"event","受付開始",e.name,`受付開始${timeLabel(a.start)}`,a.name||"",e.id,"event");
+     const endDay=dayFor(a.end); if(endDay)add(endDay,"event","受付終了",e.name,`受付終了${timeLabel(a.end)}`,a.name||"",e.id,"event");
+     const announcementDay=dayFor(a.announcement); if(announcementDay)add(announcementDay,"event","発表日",e.name,"発表日",a.name||"",e.id,"event");
    });
    (e.performances||[]).forEach(p=>{
-     if(p.date===todayKey)add("event","公演日",e.name,`公演日${p.start?` ${p.start}`:""}`,p.venue||"",e.id,"event");
+     const performanceDay=dayFor(p.date); if(performanceDay)add(performanceDay,"event","公演日",e.name,`公演日${p.start?` ${p.start}`:""}`,p.venue||"",e.id,"event");
    });
  });
 
- // グッズ・販売：受注販売開始日・受注販売終了日・商品関連の予定
+ // グッズ・販売：受注販売開始日・受注販売終了日
  products.forEach(p=>{
    if((p.type||"POP UP")==="受注販売"){
-     if(p.start===todayKey)add("product","受注販売開始日",p.name,"受注販売開始日",p.venue||"",p.id,"product");
-     if(p.end===todayKey)add("product","受注販売終了日",p.name,"受注販売終了日",p.venue||"",p.id,"product");
+     const startDay=dayFor(p.start); if(startDay)add(startDay,"product","受注販売開始日",p.name,"受注販売開始日",p.venue||"",p.id,"product");
+     const endDay=dayFor(p.end); if(endDay)add(endDay,"product","受注販売終了日",p.name,"受注販売終了日",p.venue||"",p.id,"product");
    }
  });
+ // 予定：通常予定は予定欄、商品関連の予定はグッズ・販売欄
  schedules.forEach(x=>{
    const d=x.date||String(x.start||"").slice(0,10);
-   if(d===todayKey){
+   const targetDay=dayFor(d);
+   if(targetDay){
      const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");
      const group=x.type==="商品関連"?"product":"schedule";
-     add(group,"予定",x.name,times||"予定",x.related||"",x.id,"schedule");
+     add(targetDay,group,"予定",x.name,times||"予定",x.related||"",x.id,"schedule");
    }
  });
 
- const renderNotifications=(group,emptyText)=>{
-   const list=notifications[group];
+ const renderNotifications=(list,emptyText)=>{
    if(!list.length)return `<div class="notification-empty">${emptyText}</div>`;
    return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail('${n.kind}','${n.entityId}')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong></div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
  };
- const total=notifications.event.length+notifications.product.length+notifications.schedule.length;
+ const dayLabel=offset=>offset===0?"今日":`あと${offset}日`;
  title("ホーム");
  document.getElementById("screen").innerHTML=`
-   <div class="hero"><h2>抽選管理</h2><div class="sub">今日の予定・受付・発表などをまとめて確認</div></div>
-   <div class="section home-notification-title"><h2>通知</h2><span class="count">${total}件</span></div>
-   <div class="home-notification-date">${date(todayKey)}</div>
-   <div class="notification-section"><h3>◆イベント</h3>${renderNotifications("event","当日のイベント通知はありません。")}</div>
-   <div class="notification-section"><h3>◆グッズ・販売</h3>${renderNotifications("product","当日のグッズ・販売通知はありません。")}</div>
-   <div class="notification-section"><h3>◆予定</h3>${renderNotifications("schedule","当日の予定はありません。")}</div>`;
+   <div class="hero"><h2>抽選管理</h2><div class="sub">今後7日間の予定・受付・発表などをまとめて確認</div></div>
+   <div class="section home-notification-title"><h2>通知（7日間）</h2></div>
+   <div class="home-notification-date">${date(days[0].key)} ～ ${date(days[6].key)}</div>
+   ${notifications.map(d=>`
+     <div class="notification-day">
+       <div class="notification-day-title"><strong>${date(d.key)}</strong><span>${dayLabel(d.offset)}</span></div>
+       <div class="notification-section"><h3>◆イベント</h3>${renderNotifications(d.event,"イベントはありません。")}</div>
+       <div class="notification-section"><h3>◆グッズ・販売</h3>${renderNotifications(d.product,"グッズ・販売はありません。")}</div>
+       <div class="notification-section"><h3>◆予定</h3>${renderNotifications(d.schedule,"予定はありません。")}</div>
+     </div>`).join("")}`;
 }
-
 function applicationStatusSummary(e){
  const apps=e.applications||[];
  if(!apps.length)return `<span class="status status-none">申込なし</span>`;
