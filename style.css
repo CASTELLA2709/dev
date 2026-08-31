@@ -1039,3 +1039,24 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
   .notification-day-title span{font-size:12px}
   .notification-day .notification-section h3{font-size:14px}
 }
+
+
+/* ===== スマホ版カレンダー視認性向上 ===== */
+@media (max-width: 600px) {
+  .calendar-head { margin-bottom: 12px; }
+  .calendar-select { font-size: 15px; height: 36px; }
+  .week { font-size: 12px; font-weight: 700; margin-bottom: 7px; }
+  .cal-grid { gap: 4px; }
+  .day { min-height: 68px; padding: 5px; font-size: 12px; border-radius: 6px; }
+  .day b { font-size: 13px; }
+  .dot { margin-top: 5px; font-size: 10px; line-height: 1.35; }
+  .more-dot { font-size: 9px; margin-top: 4px; }
+  .selected-day { margin-top: 18px; }
+  .selected-day-heading h2 { font-size: 17px; }
+  .event-group { padding-left: 10px; margin-bottom: 11px; }
+  .event-group strong { font-size: 15px; line-height: 1.4; }
+  .event-group div { font-size: 12px; line-height: 1.5; }
+  .calendar-type, .calendar-status { font-size: 11px; padding: 4px 7px; }
+  .calendar-legend { font-size: 10px; gap: 7px 11px; }
+  .calendar-legend .legend-dot { width: 8px; height: 8px; }
+}

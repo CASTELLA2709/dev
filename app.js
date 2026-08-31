@@ -231,10 +231,10 @@ function applicationStatusSummary(e){
 function statusClass(status){return ({"受付中":"open","応募予定":"planned","受付前":"before","当落発表待ち":"waiting","応募済み":"applied","当選":"won","落選":"lost","受付終了":"closed","未応募":"none"}[status]||"none")}
 function applicationRows(e){
  const apps=e.applications||[];
- if(!apps.length)return `<div class="application-empty">申込はありません</div>`;
+ if(!apps.length)return `<div class="application-empty">申込・注文はありません</div>`;
  return `<div class="application-table"><div class="application-row application-head"><span>名称</span><span>期間</span><span>発表日</span><span>ステータス</span></div>${apps.map(a=>`<div class="application-row"><span class="application-name">${esc(a.name||"申込・注文")}</span><span class="application-period">${a.start||a.end?`<span>${dt(a.start)}</span><span>～ ${dt(a.end)}</span>`:"―"}</span><span>${a.announcement?date(a.announcement):"―"}</span><span class="status status-${statusClass(a.status)}">${esc(a.status||"未応募")}</span></div>`).join("")}</div>`;
 }
-function eventCard(e){return `<div class="item" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　<span class="event-application-label">申込</span> ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full"><span class="summary-label">申込</span>${applicationRows(e)}</div></div>`}
+function eventCard(e){return `<div class="item" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　<span class="event-application-label">申込・注文</span> ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full"><span class="summary-label">申込・注文</span>${applicationRows(e)}</div></div>`}
 function eventsList(){
  const f=state.filters.events;
  const filtered=events.filter(e=>(!f.type||e.type===f.type)&&(!f.keyword||[e.name,e.performers].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
@@ -299,7 +299,7 @@ function eventDetail(){
    <div class="row"><b style="font-size:9px">公演 ${i+1}</b><span class="badge">${date(p.date)}</span></div>
    ${detail("開場",p.open)}${detail("開演",p.start)}${detail("会場",p.venue)}${detail("メモ",p.memo)}
  </div>`).join("")}
- <div class="section"><h2>申込</h2><span class="count">${apps.length}件</span></div>
+ <div class="section"><h2>申込・注文</h2><span class="count">${apps.length}件</span></div>
  ${apps.length?`<div class="list">${apps.map(a=>`<div class="item">
    <div class="row"><h3>${esc(a.name||"申込・注文")}</h3><span class="badge">${esc(a.method)}</span></div>
    <p>${dt(a.start)} ～ ${dt(a.end)}</p>
@@ -308,8 +308,8 @@ function eventDetail(){
      <button class="secondary" onclick="editApplication('${e.id}','${a.id}')">編集</button>
      <button class="danger" onclick="deleteApplication('${e.id}','${a.id}')">削除</button>
    </div>
- </div>`).join("")}</div>`:`<div class="empty">このイベントの申込はありません。</div>`}
- <button class="primary" style="margin-top:10px" onclick="addApplication('${e.id}')">＋ このイベントに申込を追加</button>
+ </div>`).join("")}</div>`:`<div class="empty">このイベントの申込・注文はありません。</div>`}
+ <button class="primary" style="margin-top:10px" onclick="addApplication('${e.id}')">＋ このイベントに申込・注文を追加</button>
  <div class="actions"><button class="danger" onclick="deleteEvent('${e.id}')">イベントを削除</button></div>`;
 }
 function editEvent(id){state.eventId=id;state.page="eventForm";render()}
@@ -538,6 +538,11 @@ function getJapaneseHolidays(year){
  return h;
 }
 
+function scheduleTypeIcon(type){
+ const icons={"一般予定":"📌","仕事":"💼","旅行":"✈️","イベント":"🎪","ライブ":"🎤","舞台":"🎭","映画":"🎬","スポーツ":"⚽","食事":"🍴","買い物":"🛍️","記念日":"🎉","その他":"📅"};
+ return icons[type]||"📅";
+}
+
 function calendar(){
  title("カレンダー");
  const y=state.calendarDate.getFullYear(),m=state.calendarDate.getMonth();
@@ -582,7 +587,7 @@ function calendar(){
  });
 
  const selectedItems=getItems(sk);
- const details=selectedItems.map(x=>`<div class="card event-group ${x.cls}"><div class="calendar-detail-head"><strong>${esc(x.name)}</strong><span class="calendar-type">${esc(x.type)}</span></div><div>${esc(x.text)}${x.status?`　<span class="calendar-status">${esc(x.status)}</span>`:""}</div>${x.entityId?`<div class="calendar-detail-actions"><button type="button" class="primary calendar-detail-button" onclick="event.stopPropagation(); openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})">${x.kind==="event"?"イベント詳細を見る":x.kind==="product"?"販売詳細を見る":"予定詳細を見る"}</button></div>`:""}</div>`).join("");
+ const details=selectedItems.map(x=>`<div class="card event-group ${x.cls}"><div class="calendar-detail-head"><strong>${x.kind==="schedule"?scheduleTypeIcon(x.type)+" ":""}${esc(x.name)}</strong><span class="calendar-type">${x.kind==="schedule"?scheduleTypeIcon(x.type)+" ":""}${esc(x.type)}</span></div><div>${esc(x.text)}${x.status?`　<span class="calendar-status">${esc(x.status)}</span>`:""}</div>${x.entityId?`<div class="calendar-detail-actions"><button type="button" class="primary calendar-detail-button" onclick="event.stopPropagation(); openCalendarDetail(${JSON.stringify(x).replace(/"/g,'&quot;')})">${x.kind==="event"?"イベント詳細を見る":x.kind==="product"?"販売詳細を見る":"予定詳細を見る"}</button></div>`:""}</div>`).join("");
  const displayDate=state.calendarView==="week"?`${date(key(days[0]))} ～ ${date(key(days[6]))}`:`${y}年 ${m+1}月`;
  const headerYear=state.calendarView==="week"?state.selectedDate.getFullYear():y;
  const headerMonth=state.calendarView==="week"?state.selectedDate.getMonth():m;
