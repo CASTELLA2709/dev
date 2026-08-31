@@ -17,7 +17,7 @@ const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
 schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,schedule:true},calendarFilterOpen:false};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 // 申込の受付ステータスを日時に応じて自動更新
 // ・受付開始日時を過ぎたら「未応募」「応募予定」「受付前」→「受付中」
@@ -180,11 +180,14 @@ function home(){
    });
  });
 
- // グッズ・販売：受注販売開始日・受注販売終了日
+ // グッズ・販売：受注販売の期間、景品の発売日
  products.forEach(p=>{
-   if((p.type||"POP UP")==="受注販売"){
+   const type=p.type||"POP UP";
+   if(type==="受注販売"){
      const startDay=dayFor(p.start); if(startDay)add(startDay,"product","受注販売開始日",p.name,"受注販売開始日",p.venue||"",p.id,"product");
      const endDay=dayFor(p.end); if(endDay)add(endDay,"product","受注販売終了日",p.name,"受注販売終了日",p.venue||"",p.id,"product");
+   }else if(["一番くじ","UFOキャッチャー","その他景品"].includes(type)){
+     const releaseDay=dayFor(p.start); if(releaseDay)add(releaseDay,"product","景品発売日",p.name,"景品発売日",p.venue||"",p.id,"product");
    }
  });
  // 予定：通常予定は予定欄、商品関連の予定はグッズ・販売欄
@@ -330,10 +333,11 @@ function productsList(){
  const list=products.filter(p=>(!f.type||((p.type||"POP UP")===f.type))&&(!f.keyword||[p.name,p.venue].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
  const today=new Date(); today.setHours(0,0,0,0);
  const weekLater=new Date(today); weekLater.setDate(weekLater.getDate()+7);
- const soon=[],comfortable=[],expired=[],general=[],purchased=[];
+ const soon=[],comfortable=[],expired=[],general=[],prize=[],purchased=[];
  list.forEach(p=>{
    if(p.purchased){purchased.push(p);return}
    const type=p.type||"POP UP";
+   if(["一番くじ","UFOキャッチャー","その他景品"].includes(type)){prize.push(p);return}
    if(type==="通常販売"){general.push(p);return}
    const end=p.end?new Date(p.end+"T00:00:00"):null;
    if(!end||isNaN(end)){comfortable.push(p);return}
@@ -343,13 +347,14 @@ function productsList(){
  });
  const endTime=p=>p.end?new Date(p.end+"T00:00:00").getTime():Infinity;
  [soon,comfortable,expired,general,purchased].forEach(a=>a.sort((x,y)=>endTime(x)-endTime(y)));
+ prize.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
  title("グッズ・販売");
- const visibility=state.productSections||{soon:true,comfortable:false,expired:false,general:false,purchased:false};
- const toggleSection=key=>{state.productSections=state.productSections||{soon:true,comfortable:false,expired:false,general:false};state.productSections[key]=!state.productSections[key];render()};
- const card=p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</p><p>買いたい商品 ${p.items?.length||0}件</p></div>`;
+ const visibility=state.productSections||{soon:true,comfortable:false,expired:false,general:false,prize:true,purchased:false};
+ const toggleSection=key=>{state.productSections=state.productSections||{soon:true,comfortable:false,expired:false,general:false,prize:true,purchased:false};state.productSections[key]=!state.productSections[key];render()};
+ const card=p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?`発売日 ${p.start?date(p.start):"-"}`:`${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}`}</p><p>買いたい商品 ${p.items?.length||0}件</p></div>`;
  const block=(key,label,items,cls)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block product-list-block ${cls}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleProductSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
  window.toggleProductSection=toggleSection;
- document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${block("soon","期限が一週間以内",soon,"soon-products")}${block("comfortable","期限に余裕がある",comfortable,"comfortable-products")}${block("expired","期限が過ぎたもの",expired,"expired-products")}${block("general","一般販売",general,"general-products")}${block("purchased","購入済み",purchased,"purchased-products")}${!list.length?`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`:""}`;
+ document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${block("soon","期限が一週間以内",soon,"soon-products")}${block("comfortable","期限に余裕がある",comfortable,"comfortable-products")}${block("expired","期限が過ぎたもの",expired,"expired-products")}${block("general","一般販売",general,"general-products")}${block("prize","景品の発売日",prize,"prize-products")}${block("purchased","購入済み",purchased,"purchased-products")}${!list.length?`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`:""}`;
 }
 function openProduct(i){state.returnPage="products";state.productId=i;state.page="product";render()}
 function openHomeNotificationDetail(kind,id){state.returnPage="home";if(kind==="event"){state.eventId=id;state.page="event"}else if(kind==="product"){state.productId=id;state.page="product"}else if(kind==="schedule"){state.scheduleId=id;state.page="schedule"}else{return}render()}
@@ -372,7 +377,7 @@ function productDetail(){
    <h2>${esc(p.name)}</h2>
    <div class="sub">${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</div>
  </div>
- <div class="card">${detail("販売名",p.name)}${detail("販売種別",p.type)}${detail("開始日",p.start?date(p.start):"")}${detail("終了日",p.end?date(p.end):"")}${detail("会場",p.venue)}${urlDetail("URL",p.url)}${detail("メモ",p.memo)}<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee"><label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer"><input type="checkbox" ${p.purchased?"checked":""} onchange="toggleProductPurchased('${p.id}',this.checked)" style="width:20px;height:20px">購入済み${p.type==="通常販売"&&p.purchased?`<span class="status status-done" style="margin-left:auto">済</span>`:""}</label></div></div>
+ <div class="card">${detail("販売名",p.name)}${detail("販売種別",p.type)}${detail(["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?"発売日":"開始日",p.start?date(p.start):"")}${!["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?detail("終了日",p.end?date(p.end):""):""}${detail("会場",p.venue)}${urlDetail("URL",p.url)}${detail("メモ",p.memo)}<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee"><label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer"><input type="checkbox" ${p.purchased?"checked":""} onchange="toggleProductPurchased('${p.id}',this.checked)" style="width:20px;height:20px">購入済み${p.type==="通常販売"&&p.purchased?`<span class="status status-done" style="margin-left:auto">済</span>`:""}</label></div></div>
  <div class="section"><h2>買いたい商品</h2><span class="count">${p.items?.length||0}件</span></div>
  ${p.items?.length?`<div class="list">${p.items.map((it,i)=>`
    <div class="item">
@@ -398,14 +403,18 @@ function productForm(){
  document.getElementById("screen").innerHTML=`
  <form class="form" id="productForm">
  <div class="group"><label>販売名 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：○○ POP UP STORE" value="${esc(p.name)}"></div>
- <div class="group"><label>販売種別</label><select class="input" name="type">${["POP UP","受注販売","通常販売"].map(x=>`<option ${x==p.type?"selected":""}>${x}</option>`).join("")}</select></div>
- <div class="time-grid"><div class="group"><label>開始日</label><input class="input product-form-date" name="start" type="date" value="${esc(p.start)}"></div><div class="group"><label>終了日</label><input class="input product-form-date" name="end" type="date" value="${esc(p.end)}"></div></div>
+ <div class="group"><label>販売種別</label><select class="input" name="type">${["POP UP","受注販売","通常販売","一番くじ","UFOキャッチャー","その他景品"].map(x=>`<option ${x==p.type?"selected":""}>${x}</option>`).join("")}</select></div>
+ <div class="time-grid"><div class="group"><label id="productStartLabel">${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?"発売日":"開始日"}</label><input class="input product-form-date" name="start" type="date" value="${esc(p.start)}"></div><div class="group" id="productEndGroup"><label>終了日</label><input class="input product-form-date" name="end" type="date" value="${esc(p.end)}"></div></div>
  <div class="group"><label>会場</label><input class="input" name="venue" placeholder="POP UP会場など" value="${esc(p.venue)}"></div>
  <div class="group"><label>販売URL</label><input class="input" name="url" type="url" value="${esc(p.url)}"></div>
  <div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(p.memo)}</textarea></div>
  <button class="primary">保存</button>
  </form>`;
- document.getElementById("productForm").onsubmit=saveProduct;
+ const productFormEl=document.getElementById("productForm");
+ const productTypeEl=productFormEl.querySelector('[name="type"]');
+ const updateProductDateFields=()=>{const prize=["一番くじ","UFOキャッチャー","その他景品"].includes(productTypeEl.value);document.getElementById("productStartLabel").textContent=prize?"発売日":"開始日";document.getElementById("productEndGroup").classList.toggle("hidden",prize);if(prize)productFormEl.querySelector('[name="end"]').value=""};
+ productTypeEl.addEventListener("change",updateProductDateFields); updateProductDateFields();
+ productFormEl.onsubmit=saveProduct;
 }
 function saveProduct(ev){
  ev.preventDefault();
@@ -490,7 +499,7 @@ function scheduleList(){
  const block=(key,label,items)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block schedule-list-block ${key}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleScheduleSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
  document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>予定</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('schedules')">☰ 絞り込み</button></div></div>${block("current","今月の予定",current)}${block("future","来月以降の予定",future)}${block("past","過去の予定",past)}${!list.length?`<div class="empty">${schedules.length?"条件に一致する予定がありません。":"予定がありません。"}</div>`:""}`;
 }
-function openFilter(kind){const f=state.filters[kind];const configs={events:{title:"イベントの絞り込み",label:"イベント種別",options:["ライブ","舞台","イベント","その他"],placeholder:"イベント名・出演者を検索"},products:{title:"販売情報の絞り込み",label:"販売種別",options:["POP UP","受注販売","通常販売"],placeholder:"販売名・会場を検索"},schedules:{title:"予定の絞り込み",label:"予定種別",options:["一般予定","仕事","旅行","イベント","ライブ","舞台","映画","スポーツ","食事","買い物","記念日","その他"],placeholder:"予定名・関連情報を検索"}}[kind];const old=document.getElementById("filterModal");if(old)old.remove();const div=document.createElement("div");div.id="filterModal";div.className="overlay";div.innerHTML=`<div class="sheet filter-sheet"><button class="close" onclick="closeFilter()">×</button><h2>${configs.title}</h2><div class="group"><label>${configs.label}</label><select class="input" id="filterType"><option value="">すべて</option>${configs.options.map(x=>`<option ${f.type===x?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>キーワード</label><input class="input" id="filterKeyword" placeholder="${configs.placeholder}" value="${esc(f.keyword)}"></div><div class="filter-actions"><button class="secondary" onclick="clearFilter('${kind}')">クリア</button><button class="primary" onclick="applyFilter('${kind}')">この条件で絞り込む</button></div></div>`;document.body.appendChild(div)}
+function openFilter(kind){const f=state.filters[kind];const configs={events:{title:"イベントの絞り込み",label:"イベント種別",options:["ライブ","舞台","イベント","その他"],placeholder:"イベント名・出演者を検索"},products:{title:"販売情報の絞り込み",label:"販売種別",options:["POP UP","受注販売","通常販売","一番くじ","UFOキャッチャー","その他景品"],placeholder:"販売名・会場を検索"},schedules:{title:"予定の絞り込み",label:"予定種別",options:["一般予定","仕事","旅行","イベント","ライブ","舞台","映画","スポーツ","食事","買い物","記念日","その他"],placeholder:"予定名・関連情報を検索"}}[kind];const old=document.getElementById("filterModal");if(old)old.remove();const div=document.createElement("div");div.id="filterModal";div.className="overlay";div.innerHTML=`<div class="sheet filter-sheet"><button class="close" onclick="closeFilter()">×</button><h2>${configs.title}</h2><div class="group"><label>${configs.label}</label><select class="input" id="filterType"><option value="">すべて</option>${configs.options.map(x=>`<option ${f.type===x?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>キーワード</label><input class="input" id="filterKeyword" placeholder="${configs.placeholder}" value="${esc(f.keyword)}"></div><div class="filter-actions"><button class="secondary" onclick="clearFilter('${kind}')">クリア</button><button class="primary" onclick="applyFilter('${kind}')">この条件で絞り込む</button></div></div>`;document.body.appendChild(div)}
 function closeFilter(){document.getElementById("filterModal")?.remove()}
 function clearFilter(kind){state.filters[kind]={type:"",keyword:""};closeFilter();render()}
 function applyFilter(kind){state.filters[kind]={type:document.getElementById("filterType").value,keyword:document.getElementById("filterKeyword").value.trim()};closeFilter();render()}
@@ -575,7 +584,7 @@ function calendar(){
      if(cf.applicationEnd!==false&&a.end&&a.end.slice(0,10)===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込")+" 受付終了",type:"申込終了",cls:"cal-application-end",status:a.status,entityId:e.id,kind:"event"});
      if(cf.announcement!==false&&a.method==="抽選"&&a.announcement===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
    }));
-   products.forEach(p=>{const type=p.type||"POP UP",isOrder=type==="受注販売";if(type!=="通常販売"&&cf.popup!==false&&!isOrder){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-popup",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-popup",entityId:p.id,kind:"product"})}if(isOrder&&cf.order!==false){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-order",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-order",entityId:p.id,kind:"product"})}});
+   products.forEach(p=>{const type=p.type||"POP UP",isOrder=type==="受注販売",isPrize=["一番くじ","UFOキャッチャー","その他景品"].includes(type);if(isPrize){if(cf.prize!==false&&p.start===k)addCalendarItem(items,{name:p.name,text:"景品発売日",type:"景品発売",cls:"cal-prize",entityId:p.id,kind:"product"});return}if(type!=="通常販売"&&cf.popup!==false&&!isOrder){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-popup",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-popup",entityId:p.id,kind:"product"})}if(isOrder&&cf.order!==false){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-order",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-order",entityId:p.id,kind:"product"})}});
    schedules.forEach(x=>{if(cf.schedule!==false&&(x.date||String(x.start||"").slice(0,10))===k){const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");addCalendarItem(items,{name:x.name,text:times||"予定",type:x.type||"一般予定",cls:"cal-schedule",entityId:x.id,kind:"schedule"})}});
    return items;
  }
@@ -619,9 +628,9 @@ function calendar(){
    <div class="calendar-head-actions">
      <button type="button" class="calendar-today-button" onclick="goToToday()">今日</button>
      <button type="button" class="calendar-view-toggle" onclick="toggleCalendarView()">${state.calendarView==="month"?"週表示":"月表示"}</button>
-     <div class="calendar-filter-control"><button type="button" class="calendar-display-button ${state.calendarFilterOpen?"open":""}" onclick="toggleCalendarFilterMenu()">表示 <span>${state.calendarFilterOpen?"⌃":"⌄"}</span></button>${state.calendarFilterOpen?`<div class="calendar-filter-menu"><div class="calendar-filter-menu-title">表示する項目</div><div class="calendar-filter-menu-list"><button type="button" class="calendar-filter-chip ${state.calendarFilters.event!==false?"active":""}" onclick="toggleCalendarFilter('event')">公演</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.applicationStart!==false?"active":""}" onclick="toggleCalendarFilter('applicationStart')">受付開始</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.applicationEnd!==false?"active":""}" onclick="toggleCalendarFilter('applicationEnd')">受付終了</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.announcement!==false?"active":""}" onclick="toggleCalendarFilter('announcement')">発表日</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.popup!==false?"active":""}" onclick="toggleCalendarFilter('popup')">POP UP</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.order!==false?"active":""}" onclick="toggleCalendarFilter('order')">受注販売</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.schedule!==false?"active":""}" onclick="toggleCalendarFilter('schedule')">予定</button></div><div class="calendar-filter-menu-actions"><button type="button" class="calendar-filter-all" onclick="resetCalendarFilters()">すべて表示</button><button type="button" class="calendar-filter-all calendar-filter-none" onclick="hideAllCalendarFilters()">すべて非表示</button></div></div>`:""}</div>
+     <div class="calendar-filter-control"><button type="button" class="calendar-display-button ${state.calendarFilterOpen?"open":""}" onclick="toggleCalendarFilterMenu()">表示 <span>${state.calendarFilterOpen?"⌃":"⌄"}</span></button>${state.calendarFilterOpen?`<div class="calendar-filter-menu"><div class="calendar-filter-menu-title">表示する項目</div><div class="calendar-filter-menu-list"><button type="button" class="calendar-filter-chip ${state.calendarFilters.event!==false?"active":""}" onclick="toggleCalendarFilter('event')">公演</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.applicationStart!==false?"active":""}" onclick="toggleCalendarFilter('applicationStart')">受付開始</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.applicationEnd!==false?"active":""}" onclick="toggleCalendarFilter('applicationEnd')">受付終了</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.announcement!==false?"active":""}" onclick="toggleCalendarFilter('announcement')">発表日</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.popup!==false?"active":""}" onclick="toggleCalendarFilter('popup')">POP UP</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.order!==false?"active":""}" onclick="toggleCalendarFilter('order')">受注販売</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.prize!==false?"active":""}" onclick="toggleCalendarFilter('prize')">景品発売</button><button type="button" class="calendar-filter-chip ${state.calendarFilters.schedule!==false?"active":""}" onclick="toggleCalendarFilter('schedule')">予定</button></div><div class="calendar-filter-menu-actions"><button type="button" class="calendar-filter-all" onclick="resetCalendarFilters()">すべて表示</button><button type="button" class="calendar-filter-all calendar-filter-none" onclick="hideAllCalendarFilters()">すべて非表示</button></div></div>`:""}</div>
    </div>
-   <div class="calendar-legend"><span><i class="legend-dot cal-event"></i>公演</span><span><i class="legend-dot cal-application-start"></i>受付開始</span><span><i class="legend-dot cal-application-end"></i>受付終了</span><span><i class="legend-dot cal-announcement"></i>発表日</span><span><i class="legend-dot cal-popup"></i>POP UP</span><span><i class="legend-dot cal-order"></i>受注販売</span><span><i class="legend-dot cal-schedule"></i>予定</span></div>
+   <div class="calendar-legend"><span><i class="legend-dot cal-event"></i>公演</span><span><i class="legend-dot cal-application-start"></i>受付開始</span><span><i class="legend-dot cal-application-end"></i>受付終了</span><span><i class="legend-dot cal-announcement"></i>発表日</span><span><i class="legend-dot cal-popup"></i>POP UP</span><span><i class="legend-dot cal-order"></i>受注販売</span><span><i class="legend-dot cal-prize"></i>景品発売</span><span><i class="legend-dot cal-schedule"></i>予定</span></div>
    <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
    <div class="cal-grid ${state.calendarView==="week"?"cal-grid-week":""}">${cells}</div>
    <div class="selected-day"><div class="section selected-day-heading"><h2>${date(sk)}</h2><div class="selected-day-actions"><span class="count">${selectedItems.length}件</span><button type="button" class="calendar-add-button" onclick="newEvent('${sk}')">＋イベント</button><button type="button" class="calendar-add-button" onclick="newSchedule('${sk}')">＋予定</button></div></div>${details||'<div class="empty">この日の予定はありません。</div>'}</div></div>`;
@@ -629,8 +638,8 @@ function calendar(){
 
 function toggleCalendarFilterMenu(){state.calendarFilterOpen=!state.calendarFilterOpen;render()}
 function toggleCalendarFilter(kind){state.calendarFilters=state.calendarFilters||{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,schedule:true};state.calendarFilters[kind]=state.calendarFilters[kind]===false;state.calendarFilterOpen=true;render()}
-function resetCalendarFilters(){state.calendarFilters={event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,schedule:true};state.calendarFilterOpen=true;render()}
-function hideAllCalendarFilters(){state.calendarFilters={event:false,applicationStart:false,applicationEnd:false,announcement:false,popup:false,order:false,schedule:false};state.calendarFilterOpen=true;render()}
+function resetCalendarFilters(){state.calendarFilters={event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true};state.calendarFilterOpen=true;render()}
+function hideAllCalendarFilters(){state.calendarFilters={event:false,applicationStart:false,applicationEnd:false,announcement:false,popup:false,order:false,prize:false,schedule:false};state.calendarFilterOpen=true;render()}
 function toggleCalendarView(){state.calendarView=state.calendarView==="month"?"week":"month";render()}
 function changeCalendarPeriod(n){
  if(state.calendarView==="week"){

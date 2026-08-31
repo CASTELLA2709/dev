@@ -30,6 +30,9 @@ button,input,select,textarea{font:inherit}.app{height:100vh;max-width:540px;marg
 .dot.cal-application-end,.legend-dot.cal-application-end{color:#ff9ca3;background:#d85b68}
 .dot.cal-popup,.legend-dot.cal-popup{color:#ffc47d;background:#d88938}
 .dot.cal-order,.legend-dot.cal-order{color:#ff9ac4;background:#d85b8c}
+.dot.cal-prize,.legend-dot.cal-prize{color:#9b8cff;background:#6f5bd3}
+.event-group.cal-prize{border-left-color:#6f5bd3}
+
 .dot.cal-schedule,.legend-dot.cal-schedule{color:#b8c0cc;background:#697386}
 .more-dot{display:block;margin-top:3px;font-size:6px;color:#777780}
 .event-group.cal-event{border-left-color:#9275ed}
@@ -1368,6 +1371,7 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 .calendar-page .event-group.cal-announcement{border-left-color:#c69a2b !important}
 .calendar-page .event-group.cal-popup{border-left-color:#d88938 !important}
 .calendar-page .event-group.cal-order{border-left-color:#d85b8c !important}
+.calendar-page .event-group.cal-prize{border-left-color:#6f5bd3 !important}
 .calendar-page .event-group.cal-schedule{border-left-color:#697386 !important}
 
 /* 表示ボタンを「今日」「月/週表示」と同じ操作列に配置 */
