@@ -584,6 +584,8 @@ body {
 /* ===== 一覧画面の絞り込み ===== */
 .list-section{align-items:center}
 .section-actions{display:flex;align-items:center;gap:8px}
+.section-actions .wishlist-button{width:auto!important;padding:6px 9px!important;font-size:11px!important;border-radius:7px!important}
+
 .filter-button{border:1px solid #dfe3e8;background:#fff;color:#59616b;border-radius:8px;padding:7px 10px;font-size:10px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(50,60,90,.05)}
 .filter-button:hover,.filter-button.active{border-color:#bcaeea;color:#7057c7;background:#faf8ff}
 .filter-sheet{padding-bottom:24px}
@@ -1381,4 +1383,92 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 @media(max-width:600px){
   .calendar-page .calendar-head-actions{gap:6px}
   .calendar-page .calendar-filter-control .calendar-display-button{height:33px;min-width:72px}
+}
+
+/* グッズ・販売 / 景品 切り替え */
+.product-category-switch{
+  display:flex;
+  gap:6px;
+  margin:10px 0 12px;
+  padding:3px;
+  background:#f1f3f5;
+  border-radius:10px;
+}
+.product-category-button{
+  flex:1;
+  border:0;
+  background:transparent;
+  color:#666;
+  border-radius:8px;
+  min-height:32px;
+  padding:5px 8px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.product-category-button.active{
+  background:#fff;
+  color:#222;
+  box-shadow:0 1px 4px rgba(0,0,0,.12);
+}
+
+.product-controls-under-title{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin:9px 0 10px;
+}
+.product-controls-under-title .product-category-switch{
+  flex:1;
+  margin:0;
+}
+.product-controls-under-title .wishlist-button{
+  flex:0 0 auto;
+  width:auto;
+  min-height:32px;
+  padding:5px 9px;
+  font-size:12px;
+  white-space:nowrap;
+}
+@media(max-width:600px){
+  .product-controls-under-title{gap:6px}
+  .product-controls-under-title .wishlist-button{padding:5px 8px;font-size:11px}
+}
+/* グッズ・販売画面：切替ボタンと絞り込みを同じ列に配置 */
+.product-controls-under-title{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin:9px 0 7px;
+}
+.product-controls-under-title .product-category-switch{
+  flex:1;
+  margin:0;
+}
+.product-controls-under-title .product-filter-button{
+  flex:0 0 auto;
+  width:auto;
+  min-height:32px;
+  padding:5px 9px;
+  font-size:12px;
+  white-space:nowrap;
+}
+.product-wishlist-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin:0 0 4px;
+}
+.product-wishlist-row .wishlist-button{
+  width:auto;
+  min-height:30px;
+  padding:4px 9px;
+  font-size:11px;
+  white-space:nowrap;
+}
+@media(max-width:600px){
+  .product-controls-under-title{gap:6px}
+  .product-controls-under-title .product-filter-button{padding:5px 8px;font-size:11px}
+  .product-wishlist-row .wishlist-button{padding:4px 8px;font-size:11px}
 }

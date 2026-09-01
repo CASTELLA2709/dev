@@ -17,7 +17,7 @@ const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
 // 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
 schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
+const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productDisplayMode:"goods",productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 // 申込の受付ステータスを日時に応じて自動更新
 // ・受付開始日時を過ぎたら「未応募」「応募予定」「受付前」→「受付中」
@@ -79,11 +79,11 @@ function nav(){
   document.querySelectorAll(".bottom-nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
   const add = document.getElementById("addButton");
   if(add){
-    const hideAdd = ["event","eventForm","product","productForm","schedule","scheduleForm","orderForm","saleItemForm"].includes(state.page);
+    const hideAdd = ["event","eventForm","product","productForm","schedule","scheduleForm","orderForm","saleItemForm","wishlist"].includes(state.page);
     add.classList.toggle("hidden", hideAdd);
   }
 }
-function render(){nav();switch(state.page){case"home":home();break;case"calendar":calendar();break;case"events":eventsList();break;case"event":eventDetail();break;case"eventForm":eventForm();break;case"products":productsList();break;case"product":productDetail();break;case"productForm":productForm();break;case"schedules":scheduleList();break;case"schedule":scheduleDetail();break;case"scheduleForm":scheduleForm();break;case"orderForm":orderForm();break;case"saleItemForm":saleItemForm();break}}
+function render(){nav();switch(state.page){case"home":home();break;case"calendar":calendar();break;case"events":eventsList();break;case"event":eventDetail();break;case"eventForm":eventForm();break;case"products":productsList();break;case"wishlist":wishlistList();break;case"product":productDetail();break;case"productForm":productForm();break;case"schedules":scheduleList();break;case"schedule":scheduleDetail();break;case"scheduleForm":scheduleForm();break;case"orderForm":orderForm();break;case"saleItemForm":saleItemForm();break}}
 function go(p){
   // フッターから画面を切り替えたときは、各画面を毎回初期表示状態に戻す
   state.page=p;
@@ -162,9 +162,9 @@ function home(){
  const days=Array.from({length:7},(_,i)=>{const d=new Date(today);d.setDate(d.getDate()+i);return {date:d,key:dayKey(d),offset:i}});
  const notifications=days.map(d=>({date:d.date,key:d.key,offset:d.offset,event:[],product:[],schedule:[]}));
  const timeLabel=v=>{if(!v)return"";const str=String(v);const m=str.match(/T(\d{2}:\d{2})/);return m?` ${m[1]}`:""};
- const add=(day,group,type,name,text,detailText="",entityId=null,kind="")=>{
+ const add=(day,group,type,name,text,detailText="",entityId=null,kind="",productType="")=>{
    if(!day)return;
-   notifications[day.offset][group].push({type,name,text,detail:detailText,entityId,kind});
+   notifications[day.offset][group].push({type,name,text,detail:detailText,entityId,kind,productType});
  };
  const dayFor=v=>{const k=String(v||"").slice(0,10);return notifications.find(d=>d.key===k)};
 
@@ -184,10 +184,10 @@ function home(){
  products.forEach(p=>{
    const type=p.type||"POP UP";
    if(type==="受注販売"){
-     const startDay=dayFor(p.start); if(startDay)add(startDay,"product","受注販売開始日",p.name,"受注販売開始日",p.venue||"",p.id,"product");
-     const endDay=dayFor(p.end); if(endDay)add(endDay,"product","受注販売終了日",p.name,"受注販売終了日",p.venue||"",p.id,"product");
+     const startDay=dayFor(p.start); if(startDay)add(startDay,"product","受注販売開始日",p.name,"受注販売開始日",p.venue||"",p.id,"product",type);
+     const endDay=dayFor(p.end); if(endDay)add(endDay,"product","受注販売終了日",p.name,"受注販売終了日",p.venue||"",p.id,"product",type);
    }else if(["一番くじ","UFOキャッチャー","その他景品"].includes(type)){
-     const releaseDay=dayFor(p.start); if(releaseDay)add(releaseDay,"product","景品発売日",p.name,"景品発売日",p.venue||"",p.id,"product");
+     const releaseDay=dayFor(p.start); if(releaseDay)add(releaseDay,"product","景品発売日",p.name,"景品発売日",p.venue||"",p.id,"product",type);
    }
  });
  // 予定：通常予定は予定欄、商品関連の予定はグッズ・販売欄
@@ -203,7 +203,7 @@ function home(){
 
  const renderNotifications=(list,emptyText)=>{
    if(!list.length)return `<div class="notification-empty">${emptyText}</div>`;
-   return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail('${n.kind}','${n.entityId}')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong></div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
+   return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail('${n.kind}','${n.entityId}')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong>${n.kind==="product"&&n.productType?`<span class="badge">${esc(n.productType)}</span>`:""}</div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
  };
  const dayLabel=offset=>offset===0?"今日":`あと${offset}日`;
  title("ホーム");
@@ -333,11 +333,24 @@ function productsList(){
  const list=products.filter(p=>(!f.type||((p.type||"POP UP")===f.type))&&(!f.keyword||[p.name,p.venue].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
  const today=new Date(); today.setHours(0,0,0,0);
  const weekLater=new Date(today); weekLater.setDate(weekLater.getDate()+7);
- const soon=[],comfortable=[],expired=[],general=[],prize=[],purchased=[];
+ const soon=[],comfortable=[],expired=[],general=[],prizePlanned=[],prizeUnsecured=[],prizeUnsecuredLong=[],prizeSecured=[],purchased=[];
  list.forEach(p=>{
-   if(p.purchased){purchased.push(p);return}
    const type=p.type||"POP UP";
-   if(["一番くじ","UFOキャッチャー","その他景品"].includes(type)){prize.push(p);return}
+   if(["一番くじ","UFOキャッチャー","その他景品"].includes(type)){
+     if(p.purchased){prizeSecured.push(p);return}
+     const release=p.start?new Date(p.start+"T00:00:00"):null;
+     if(release && !isNaN(release) && release < today){
+       const oneMonthLater=new Date(release);
+       const releaseDate=oneMonthLater.getDate();
+       oneMonthLater.setMonth(oneMonthLater.getMonth()+1);
+       // 月末日（1/31など）でも、翌月の同日が存在しない場合は翌月末を基準にする
+       if(oneMonthLater.getDate()!==releaseDate) oneMonthLater.setDate(0);
+       if(today >= oneMonthLater) prizeUnsecuredLong.push(p);
+       else prizeUnsecured.push(p);
+     }else prizePlanned.push(p);
+     return
+   }
+   if(p.purchased){purchased.push(p);return}
    if(type==="通常販売"){general.push(p);return}
    const end=p.end?new Date(p.end+"T00:00:00"):null;
    if(!end||isNaN(end)){comfortable.push(p);return}
@@ -346,16 +359,31 @@ function productsList(){
    else comfortable.push(p);
  });
  const endTime=p=>p.end?new Date(p.end+"T00:00:00").getTime():Infinity;
- [soon,comfortable,expired,general,purchased].forEach(a=>a.sort((x,y)=>endTime(x)-endTime(y)));
- prize.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+ [soon,comfortable,expired,general,purchased,prizePlanned,prizeUnsecured,prizeUnsecuredLong,prizeSecured].forEach(a=>a.sort((x,y)=>endTime(x)-endTime(y)));
  title("グッズ・販売");
- const visibility=state.productSections||{soon:true,comfortable:false,expired:false,general:false,prize:true,purchased:false};
- const toggleSection=key=>{state.productSections=state.productSections||{soon:true,comfortable:false,expired:false,general:false,prize:true,purchased:false};state.productSections[key]=!state.productSections[key];render()};
- const card=p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?`発売日 ${p.start?date(p.start):"-"}`:`${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}`}</p><p>買いたい商品 ${p.items?.length||0}件</p></div>`;
+ const displayMode=state.productDisplayMode||"goods";
+ const sectionDefaults={soon:true,comfortable:false,expired:false,general:false,purchased:false,prizePlanned:true,prizeUnsecured:true,prizeUnsecuredLong:false,prizeSecured:false};
+ const visibility={...sectionDefaults,...(state.productSections||{})};
+ const toggleSection=key=>{state.productSections={...sectionDefaults,...(state.productSections||{})};state.productSections[key]=!state.productSections[key];render()};
+ const card=p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?`発売日 ${p.start?date(p.start):"-"}`:`${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}`}</p><p>欲しい商品 ${p.items?.length||0}件</p></div>`;
  const block=(key,label,items,cls)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block product-list-block ${cls}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleProductSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
  window.toggleProductSection=toggleSection;
- document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div>${block("soon","期限が一週間以内",soon,"soon-products")}${block("comfortable","期限に余裕がある",comfortable,"comfortable-products")}${block("expired","期限が過ぎたもの",expired,"expired-products")}${block("general","一般販売",general,"general-products")}${block("prize","景品の発売日",prize,"prize-products")}${block("purchased","購入済み",purchased,"purchased-products")}${!list.length?`<div class="empty">${products.length?"条件に一致する販売情報がありません。":"POP UP・受注販売などがありません。"}</div>`:""}`;
+ const goodsBlocks=block("soon","期限が一週間以内",soon,"soon-products")+block("comfortable","期限に余裕がある",comfortable,"comfortable-products")+block("expired","期限が過ぎたもの",expired,"expired-products")+block("general","一般販売",general,"general-products")+block("purchased","購入済み",purchased,"purchased-products");
+ const prizeBlocks=block("prizePlanned","発売予定",prizePlanned,"prize-products")+block("prizeUnsecured","発売済み・未確保",prizeUnsecured,"prize-products")+block("prizeUnsecuredLong","未確保",prizeUnsecuredLong,"prize-products")+block("prizeSecured","確保済み",prizeSecured,"prize-products");
+ const activeList=displayMode==="prize"?[...prizePlanned,...prizeUnsecured,...prizeUnsecuredLong,...prizeSecured]:[...soon,...comfortable,...expired,...general,...purchased];
+ const emptyText=displayMode==="prize"?(products.some(p=>["一番くじ","UFOキャッチャー","その他景品"].includes(p.type))?"条件に一致する景品がありません。":"景品がありません。"):(products.some(p=>!["一番くじ","UFOキャッチャー","その他景品"].includes(p.type||"POP UP"))?"条件に一致するグッズ・販売情報がありません。":"グッズ・販売情報がありません。");
+ document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>グッズ・販売</h2><div class="section-actions"><span class="count">${activeList.length}件</span><button class="filter-button product-filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('products')">☰ 絞り込み</button></div></div><div class="product-controls-under-title"><div class="product-category-switch"><button type="button" class="product-category-button ${displayMode==="goods"?"active":""}" onclick="switchProductDisplay('goods')">グッズ・販売</button><button type="button" class="product-category-button ${displayMode==="prize"?"active":""}" onclick="switchProductDisplay('prize')">景品</button></div></div>${displayMode==="goods"?goodsBlocks:prizeBlocks}${!activeList.length?`<div class="empty">${emptyText}</div>`:""}`;
+ window.switchProductDisplay=(mode)=>{state.productDisplayMode=mode;render()};
 }
+function wishlistList(){
+ const items=[];
+ products.forEach(p=>(p.items||[]).forEach((it,index)=>items.push({p,it,index})));
+ title("欲しい商品");
+ const card=x=>`<div class="item"><div class="row"><div><h3>${esc(x.it.name)}</h3><p style="margin-top:4px">${esc(x.p.name)} <span class="badge">${esc(x.p.type||"")}</span></p></div></div><p>${x.it.price?`¥${Number(x.it.price).toLocaleString()}`:""}${x.it.quantity?`${x.it.price?"　":""}数量：${x.it.quantity}`:""}</p>${x.p.start?`<p>${["一番くじ","UFOキャッチャー","その他景品"].includes(x.p.type)?"発売日":"開始日"}：${date(x.p.start)}</p>`:""}<div class="actions"><button class="secondary" onclick="openProduct('${x.p.id}')">詳細</button><button class="secondary" onclick="editSaleItem('${x.p.id}',${x.index})">編集</button></div></div>`;
+ const block=(label,list)=>list.length?`<div class="event-list-block product-list-block"><div class="section event-list-heading"><h2>${label}</h2><span class="count">${list.length}件</span></div><div class="list">${list.map(card).join("")}</div></div>`:"";
+ document.getElementById("screen").innerHTML=`<div class="section list-section"><div><h2>欲しい商品</h2><p class="sub">一番くじ・UFOキャッチャーなどの欲しい景品をまとめて管理できます。</p></div><button class="secondary" style="width:auto" onclick="go('products')">商品一覧</button></div>${block("欲しい商品",items)}${!items.length?`<div class="empty">欲しい商品がありません。販売情報の「欲しい商品」から追加できます。</div>`:""}`;
+}
+
 function openProduct(i){state.returnPage="products";state.productId=i;state.page="product";render()}
 function openHomeNotificationDetail(kind,id){state.returnPage="home";if(kind==="event"){state.eventId=id;state.page="event"}else if(kind==="product"){state.productId=id;state.page="product"}else if(kind==="schedule"){state.scheduleId=id;state.page="schedule"}else{return}render()}
 
@@ -377,18 +405,18 @@ function productDetail(){
    <h2>${esc(p.name)}</h2>
    <div class="sub">${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</div>
  </div>
- <div class="card">${detail("販売名",p.name)}${detail("販売種別",p.type)}${detail(["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?"発売日":"開始日",p.start?date(p.start):"")}${!["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?detail("終了日",p.end?date(p.end):""):""}${detail("会場",p.venue)}${urlDetail("URL",p.url)}${detail("メモ",p.memo)}<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee"><label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer"><input type="checkbox" ${p.purchased?"checked":""} onchange="toggleProductPurchased('${p.id}',this.checked)" style="width:20px;height:20px">購入済み${p.type==="通常販売"&&p.purchased?`<span class="status status-done" style="margin-left:auto">済</span>`:""}</label></div></div>
- <div class="section"><h2>買いたい商品</h2><span class="count">${p.items?.length||0}件</span></div>
+ <div class="card">${detail("販売名",p.name)}${detail("販売種別",p.type)}${detail(["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?"発売日":"開始日",p.start?date(p.start):"")}${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?detail("価格",p.price!=null?`¥${Number(p.price).toLocaleString()}`:"-"):""}${!["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?detail("終了日",p.end?date(p.end):""):""}${detail("会場",p.venue)}${urlDetail("URL",p.url)}${detail("メモ",p.memo)}<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee"><label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer"><input type="checkbox" ${p.purchased?"checked":""} onchange="toggleProductPurchased('${p.id}',this.checked)" style="width:20px;height:20px">購入済み${p.type==="通常販売"&&p.purchased?`<span class="status status-done" style="margin-left:auto">済</span>`:""}</label></div></div>
+ <div class="section"><h2>欲しい商品</h2><span class="count">${p.items?.length||0}件</span></div>
  ${p.items?.length?`<div class="list">${p.items.map((it,i)=>`
    <div class="item">
-     <div class="row"><h3>${esc(it.name)}</h3><b style="font-size:10px">¥${Number(it.price||0).toLocaleString()}</b></div>
+     <div class="row"><h3>${esc(it.name)}</h3>${it.price?`<b style="font-size:10px">¥${Number(it.price).toLocaleString()}</b>`:""}</div>
      <p>数量：${it.quantity||1}</p>
      ${it.url?`<p><a class="detail-link" href="${esc(/^\w[\w+.-]*:\/\//.test(it.url)?it.url:`https://${it.url}`)}" target="_blank" rel="noopener noreferrer">${esc(it.url)}</a></p>`:""}
      ${it.memo?`<p>${esc(it.memo)}</p>`:""}
      <div class="actions"><button class="secondary" onclick="editSaleItem('${p.id}',${i})">編集</button><button class="danger" onclick="deleteSaleItem('${p.id}',${i})">削除</button></div>
    </div>`).join("")}</div>`:
-   `<div class="empty">買いたい商品がありません。</div>`}
- <button class="primary" style="margin-top:10px" onclick="addSaleItem('${p.id}')">＋ 買いたい商品を追加</button>
+   `<div class="empty">欲しい商品がありません。</div>`}
+ <button class="primary" style="margin-top:10px" onclick="addSaleItem('${p.id}')">＋ 欲しい商品を追加</button>
  <div class="actions"><button class="danger" onclick="deleteProduct('${p.id}')">販売情報を削除</button></div>`;
 }
 function editProduct(i){
@@ -398,13 +426,14 @@ function editProduct(i){
   render();
 }
 function productForm(){
- const p=products.find(x=>x.id==state.productId)||{name:"",type:"POP UP",start:"",end:"",venue:"",url:"",memo:"",items:[]};
+ const p=products.find(x=>x.id==state.productId)||{name:"",type:"POP UP",start:"",end:"",venue:"",url:"",memo:"",price:null,items:[]};
  title(state.productId?"販売情報編集":"POP UP・販売登録",true);
  document.getElementById("screen").innerHTML=`
  <form class="form" id="productForm">
  <div class="group"><label>販売名 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：○○ POP UP STORE" value="${esc(p.name)}"></div>
  <div class="group"><label>販売種別</label><select class="input" name="type">${["POP UP","受注販売","通常販売","一番くじ","UFOキャッチャー","その他景品"].map(x=>`<option ${x==p.type?"selected":""}>${x}</option>`).join("")}</select></div>
  <div class="time-grid"><div class="group"><label id="productStartLabel">${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?"発売日":"開始日"}</label><input class="input product-form-date" name="start" type="date" value="${esc(p.start)}"></div><div class="group" id="productEndGroup"><label>終了日</label><input class="input product-form-date" name="end" type="date" value="${esc(p.end)}"></div></div>
+ <div class="group hidden" id="productPriceGroup"><label>価格</label><input class="input" name="price" type="number" min="0" placeholder="例：750" value="${p.price??""}"></div>
  <div class="group"><label>会場</label><input class="input" name="venue" placeholder="POP UP会場など" value="${esc(p.venue)}"></div>
  <div class="group"><label>販売URL</label><input class="input" name="url" type="url" value="${esc(p.url)}"></div>
  <div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(p.memo)}</textarea></div>
@@ -412,7 +441,7 @@ function productForm(){
  </form>`;
  const productFormEl=document.getElementById("productForm");
  const productTypeEl=productFormEl.querySelector('[name="type"]');
- const updateProductDateFields=()=>{const prize=["一番くじ","UFOキャッチャー","その他景品"].includes(productTypeEl.value);document.getElementById("productStartLabel").textContent=prize?"発売日":"開始日";document.getElementById("productEndGroup").classList.toggle("hidden",prize);if(prize)productFormEl.querySelector('[name="end"]').value=""};
+ const updateProductDateFields=()=>{const prize=["一番くじ","UFOキャッチャー","その他景品"].includes(productTypeEl.value);document.getElementById("productStartLabel").textContent=prize?"発売日":"開始日";document.getElementById("productEndGroup").classList.toggle("hidden",prize);document.getElementById("productPriceGroup").classList.toggle("hidden",!prize);if(prize)productFormEl.querySelector('[name="end"]').value=""};
  productTypeEl.addEventListener("change",updateProductDateFields); updateProductDateFields();
  productFormEl.onsubmit=saveProduct;
 }
@@ -420,7 +449,7 @@ function saveProduct(ev){
  ev.preventDefault();
  const f=new FormData(ev.target),d={
    name:String(f.get("name")).trim(),type:f.get("type"),start:f.get("start"),end:f.get("end"),
-   venue:String(f.get("venue")||""),url:String(f.get("url")||""),memo:String(f.get("memo")||"")
+   venue:String(f.get("venue")||""),url:String(f.get("url")||""),memo:String(f.get("memo")||""),price:f.get("price")!==null&&f.get("price")!==""?Number(f.get("price")):null
  };
  if(!d.name){alert("販売名を入力してください");return}
  if(state.productId) Object.assign(products.find(p=>p.id==state.productId),d);
@@ -445,13 +474,14 @@ function saleItemForm(){
  const p=products.find(x=>x.id==state.productId);
  if(!p){go("products");return}
  const editing=Number.isInteger(state.saleItemIndex) && state.saleItemIndex>=0 && p.items?.[state.saleItemIndex];
- const it=editing?p.items[state.saleItemIndex]:{name:"",price:"",quantity:1,url:"",memo:""};
- title(editing?"買いたい商品を編集":"買いたい商品を追加",true);
+ const isPrize=["一番くじ","UFOキャッチャー","その他景品"].includes(p.type);
+ const it=editing?p.items[state.saleItemIndex]:{name:"",price:"",quantity:1,url:"",memo:"",wishlistStatus:"欲しい",priority:3};
+ title(editing?"欲しい商品を編集":"欲しい商品を追加",true);
  document.getElementById("screen").innerHTML=`
  <form class="form" id="saleItemForm">
    <div class="card" style="margin-bottom:12px">${detail("販売情報",p.name)}</div>
    <div class="group"><label>商品名 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：Tシャツ ブラック M" value="${esc(it.name||"")}"></div>
-   <div class="group"><label>価格</label><input class="input" name="price" type="number" min="0" placeholder="例：5500" value="${it.price??""}"></div>
+   ${!isPrize?`<div class="group"><label>価格</label><input class="input" name="price" type="number" min="0" placeholder="例：5500" value="${it.price??""}"></div>`:""}
    <div class="group"><label>数量</label><input class="input" name="quantity" type="number" min="1" value="${it.quantity||1}"></div>
    <div class="group"><label>商品URL</label><input class="input" name="url" type="url" placeholder="https://..." value="${esc(it.url||"")}"></div>
    <div class="group"><label>メモ</label><textarea class="input textarea" name="memo" placeholder="サイズ・カラーなど">${esc(it.memo||"")}</textarea></div>
@@ -463,10 +493,11 @@ function saveSaleItem(ev){
  ev.preventDefault();
  const p=products.find(x=>x.id==state.productId);
  if(!p)return;
+ const isPrize=["一番くじ","UFOキャッチャー","その他景品"].includes(p.type);
  const f=new FormData(ev.target),name=String(f.get("name")||"").trim();
  if(!name){alert("商品名を入力してください");return}
  p.items=p.items||[];
- const item={id:id(),name,price:Number(f.get("price")||0),quantity:Math.max(1,Number(f.get("quantity")||1)),memo:String(f.get("memo")||""),url:String(f.get("url")||"")};
+ const item={id:id(),name,price:isPrize?0:Number(f.get("price")||0),quantity:Math.max(1,Number(f.get("quantity")||1)),memo:String(f.get("memo")||""),url:String(f.get("url")||"")};
  if(Number.isInteger(state.saleItemIndex) && state.saleItemIndex>=0 && p.items[state.saleItemIndex]){
    item.id=p.items[state.saleItemIndex].id||item.id;
    p.items[state.saleItemIndex]=item;
