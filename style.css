@@ -642,6 +642,22 @@ body {
   margin-top: 0;
 }
 
+
+/* ===== 予定登録：開始日・終了日をコンパクトに ===== */
+#scheduleForm .time-grid input[type="date"]{
+  width:135px !important;
+  min-width:135px !important;
+  max-width:135px !important;
+  box-sizing:border-box !important;
+}
+@media (max-width:600px){
+  #scheduleForm .time-grid input[type="date"]{
+    width:125px !important;
+    min-width:125px !important;
+    max-width:125px !important;
+  }
+}
+
 /* ===== 予定：集合時間・予定開始時刻をさらにコンパクトに ===== */
 #scheduleForm .time-grid{
   display:flex;
