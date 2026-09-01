@@ -151,7 +151,7 @@ function goBack(){
 document.getElementById("addButton").onclick=()=>document.getElementById("addModal").classList.remove("hidden");
 function closeAdd(){document.getElementById("addModal").classList.add("hidden")}
 function newEvent(prefillDate=""){closeAdd();state.returnPage=state.page;state.page="eventForm";state.eventId=null;state.prefillEventDate=prefillDate||"";render()}
-function newProduct(){closeAdd();state.returnPage=state.page;state.page="productForm";state.productId=null;render()}
+function newProduct(prefillDate=""){closeAdd();state.returnPage=state.page;state.page="productForm";state.productId=null;state.prefillProductDate=prefillDate||"";render()}
 function newOrder(){closeAdd();state.returnPage=state.page;state.page="orderForm";state.orderId=null;state.saleItemIndex=null;render()}
 function newSchedule(prefillDate=""){closeAdd();state.returnPage=state.page;state.page="scheduleForm";state.scheduleId=null;state.prefillScheduleDate=prefillDate||"";render()}
 function openEvent(id){state.returnPage=state.page;state.eventId=id;state.page="event";render()}
@@ -426,7 +426,7 @@ function editProduct(i){
   render();
 }
 function productForm(){
- const p=products.find(x=>x.id==state.productId)||{name:"",type:"POP UP",start:"",end:"",venue:"",url:"",memo:"",price:null,items:[]};
+ const p=products.find(x=>x.id==state.productId)||{name:"",type:"POP UP",start:state.prefillProductDate||"",end:"",venue:"",url:"",memo:"",price:null,items:[]};
  title(state.productId?"販売情報編集":"POP UP・販売登録",true);
  document.getElementById("screen").innerHTML=`
  <form class="form" id="productForm">
@@ -664,7 +664,7 @@ function calendar(){
    <div class="calendar-legend"><span><i class="legend-dot cal-event"></i>公演</span><span><i class="legend-dot cal-application-start"></i>受付開始</span><span><i class="legend-dot cal-application-end"></i>受付終了</span><span><i class="legend-dot cal-announcement"></i>発表日</span><span><i class="legend-dot cal-popup"></i>POP UP</span><span><i class="legend-dot cal-order"></i>受注販売</span><span><i class="legend-dot cal-prize"></i>景品発売</span><span><i class="legend-dot cal-schedule"></i>予定</span></div>
    <div class="week"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
    <div class="cal-grid ${state.calendarView==="week"?"cal-grid-week":""}">${cells}</div>
-   <div class="selected-day"><div class="section selected-day-heading"><h2>${date(sk)}</h2><div class="selected-day-actions"><span class="count">${selectedItems.length}件</span><button type="button" class="calendar-add-button" onclick="newEvent('${sk}')">＋イベント</button><button type="button" class="calendar-add-button" onclick="newSchedule('${sk}')">＋予定</button></div></div>${details||'<div class="empty">この日の予定はありません。</div>'}</div></div>`;
+   <div class="selected-day"><div class="section selected-day-heading"><h2>${date(sk)}</h2><div class="selected-day-actions"><span class="count">${selectedItems.length}件</span><button type="button" class="calendar-add-button" onclick="newEvent('${sk}')">＋イベント</button><button type="button" class="calendar-add-button" onclick="newProduct('${sk}')">＋商品</button><button type="button" class="calendar-add-button" onclick="newSchedule('${sk}')">＋予定</button></div></div>${details||'<div class="empty">この日の予定はありません。</div>'}</div></div>`;
 }
 
 function toggleCalendarFilterMenu(){state.calendarFilterOpen=!state.calendarFilterOpen;render()}
