@@ -176,7 +176,7 @@ function home(){
      const announcementDay=dayFor(a.announcement); if(announcementDay)add(announcementDay,"event","発表日",e.name,"発表日",a.name||"",e.id,"event");
    });
    (e.performances||[]).forEach(p=>{
-     const performanceDay=dayFor(p.date); if(performanceDay)add(performanceDay,"event","公演日",e.name,`公演日${p.start?` ${p.start}`:""}`,p.venue||"",e.id,"event");
+     const performanceDay=dayFor(p.date); if(performanceDay){const location=[p.meetingPlace?`集合場所：${p.meetingPlace}`:"",p.venue?`会場：${p.venue}`:""].filter(Boolean).join(" / ");add(performanceDay,"event","公演日",e.name,`公演日${p.start?` ${p.start}`:""}`,location,e.id,"event");}
    });
  });
 
@@ -197,7 +197,8 @@ function home(){
    if(targetDay){
      const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");
      const group=x.type==="商品関連"?"product":"schedule";
-     add(targetDay,group,"予定",x.name,times||"予定",x.related||"",x.id,"schedule");
+     const location=[x.meetingPlace?`集合場所：${x.meetingPlace}`:"",x.related||""] .filter(Boolean).join(" / ");
+     add(targetDay,group,"予定",x.name,times||"予定",location,x.id,"schedule");
    }
  });
 
@@ -318,7 +319,7 @@ function eventDetail(){
 }
 function editEvent(id){state.eventId=id;state.page="eventForm";render()}
 function eventForm(){const e=events.find(x=>x.id==state.eventId)||{name:"",type:"ライブ",performers:"",url:"",memo:"",performances:[{date:state.prefillEventDate||""}]};title(state.eventId?"イベント編集":"イベント登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="eventForm"><div class="group"><label>イベント名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(e.name)}"></div><div class="group"><label>イベント種別</label><select class="input" name="type">${["ライブ","舞台","イベント","その他"].map(x=>`<option ${x==e.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>出演者</label><input class="input" name="performers" value="${esc(e.performers)}"></div><div class="group"><label>イベントURL</label><input class="input" name="url" type="url" value="${esc(e.url)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(e.memo)}</textarea></div><div class="section"><h2>公演日</h2><span class="count">1件以上必須</span></div><div id="performanceList">${e.performances.length?e.performances.map(perf).join(""):perf({})}</div><button type="button" class="secondary" onclick="addPerformance()">＋ 公演日を追加</button><button class="primary" style="margin-top:10px">${state.eventId?"変更を保存":"イベントを登録"}</button></form>`;document.getElementById("eventForm").onsubmit=saveEvent}
-function perf(p={}){return `<div class="performance"><div class="performance-title"><b>公演日</b><button type="button" class="remove" onclick="this.closest('.performance').remove()">削除</button></div><div class="group"><label>日付 <b class="req">必須</b></label><input class="input" data-p="date" type="date" required value="${esc(p.date||"")}"></div><div class="time-grid"><div class="group"><label>開場時間</label><input class="input" data-p="open" type="time" value="${esc(p.open||"")}"></div><div class="group"><label>開演時間</label><input class="input" data-p="start" type="time" value="${esc(p.start||"")}"></div></div><div class="group"><label>会場</label><input class="input" data-p="venue" value="${esc(p.venue||"")}"></div><div class="group"><label>メモ</label><textarea class="input textarea" data-p="memo">${esc(p.memo||"")}</textarea></div></div>`}
+function perf(p={}){return `<div class="performance"><div class="performance-title"><b>公演日</b><button type="button" class="remove" onclick="this.closest('.performance').remove()">削除</button></div><div class="group"><label>日付 <b class="req">必須</b></label><input class="input" data-p="date" type="date" required value="${esc(p.date||"")}"></div><div class="time-grid"><div class="group"><label>開場時間</label><input class="input" data-p="open" type="time" value="${esc(p.open||"")}"></div><div class="group"><label>開演時間</label><input class="input" data-p="start" type="time" value="${esc(p.start||"")}"></div></div><div class="group"><label>会場</label><input class="input" data-p="venue" value="${esc(p.venue||"")}"></div><div class="group"><label>集合場所</label><input class="input" data-p="meetingPlace" value="${esc(p.meetingPlace||"")}"></div><div class="group"><label>メモ</label><textarea class="input textarea" data-p="memo">${esc(p.memo||"")}</textarea></div></div>`}
 function addPerformance(){document.getElementById("performanceList").insertAdjacentHTML("beforeend",perf({}))}
 function saveEvent(ev){ev.preventDefault();const f=new FormData(ev.target),rows=[...document.querySelectorAll(".performance")];if(!rows.length){alert("公演日は1件以上必要です");return}const performances=rows.map(r=>{const p={};r.querySelectorAll("[data-p]").forEach(x=>p[x.dataset.p]=x.value);return p});if(performances.some(x=>!x.date)){alert("公演日の日付は必須です");return}const d={name:String(f.get("name")).trim(),type:f.get("type"),performers:String(f.get("performers")||""),url:String(f.get("url")||""),memo:String(f.get("memo")||""),performances};if(state.eventId){Object.assign(events.find(x=>x.id==state.eventId),d)}else{const e={id:id(),...d,applications:[]};events.unshift(e);state.eventId=e.id}save(KEY.events,events);state.page="event";render()}
 function deleteEvent(i){if(!confirm("イベントを削除しますか？"))return;events=events.filter(e=>e.id!=i);save(KEY.events,events);go("events")}
