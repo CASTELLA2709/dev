@@ -15,8 +15,43 @@ window.addEventListener("load", lockPortraitOrientation);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) lockPortraitOrientation(); });
 const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1"};
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
-// 旧形式（開始日時・終了日時）の予定が残っている場合も、新しい予定日・時刻形式へ引き継ぐ
-schedules=schedules.map(s=>{if(!s.date&&s.start){const parts=String(s.start).split("T");s.date=parts[0]||"";s.meetingTime=s.meetingTime||parts[1]||"";s.startTime=s.startTime||parts[1]||"";}return s;});
+// 旧形式・旧保存形式を含め、予定を常に「開始日～終了日＋日ごとの予定」の形へ正規化
+function normalizeSchedule(s){
+  s=s||{};
+  if(!s.date&&s.start){
+    const parts=String(s.start).split("T");
+    s.date=parts[0]||"";
+    s.meetingTime=s.meetingTime||parts[1]||"";
+    s.startTime=s.startTime||parts[1]||"";
+  }
+  s.date=String(s.date||"").slice(0,10);
+  s.endDate=String(s.endDate||"").slice(0,10);
+  s.eventIds=Array.isArray(s.eventIds)?s.eventIds:[];
+
+  let plans=[];
+  if(Array.isArray(s.dailyPlans)) plans=s.dailyPlans;
+  else if(s.dailyPlans && typeof s.dailyPlans==="object"){
+    plans=Object.entries(s.dailyPlans).map(([date,text])=>({date,text:String(text||"")}));
+  }
+
+  // 日付を統一し、同じ日付の重複は最後の内容を保持する
+  const planMap=new Map();
+  plans.forEach(x=>{
+    if(!x)return;
+    const d=String(x.date||"").slice(0,10);
+    if(d) planMap.set(d,{date:d,text:String(x.text??"")});
+  });
+  s.dailyPlans=[...planMap.values()].sort((a,b)=>a.date.localeCompare(b.date));
+
+  // 終了日が消えていても、保存済みの日ごとの予定から期間を復元する。
+  const maxDaily=s.dailyPlans.reduce((m,x)=>x.date>m?x.date:m,"");
+  if(!s.endDate || (s.date && s.endDate<s.date) || (maxDaily && maxDaily>s.endDate)){
+    s.endDate=maxDaily||s.date||"";
+  }
+  if(!s.endDate) s.endDate=s.date||"";
+  return s;
+}
+schedules=schedules.map(normalizeSchedule);
 const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productDisplayMode:"goods",productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 // 申込の受付ステータスを日時に応じて自動更新
@@ -53,6 +88,7 @@ function updateApplicationStatuses(){
 
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
+function localDateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function dt(v){return v?v.replace("T"," "):"-"}
 function detail(k,v){return `<div class="detail"><span>${esc(k)}</span><b>${esc(v||"-")}</b></div>`}
 function urlDetail(k,v){const raw=String(v||"").trim();if(!raw)return detail(k,"");const href=/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)?raw:`https://${raw}`;return `<div class="detail"><span>${esc(k)}</span><b><a class="detail-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(raw)}</a></b></div>`}
@@ -193,13 +229,14 @@ function home(){
  // 予定：通常予定は予定欄、商品関連の予定はグッズ・販売欄
  schedules.forEach(x=>{
    const d=x.date||String(x.start||"").slice(0,10);
-   const targetDay=dayFor(d);
-   if(targetDay){
-     const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");
-     const group=x.type==="商品関連"?"product":"schedule";
-     const location=[x.meetingPlace?`集合場所：${x.meetingPlace}`:"",x.related||""] .filter(Boolean).join(" / ");
-     add(targetDay,group,"予定",x.name,times||"予定",location,x.id,"schedule");
-   }
+   const ed=x.endDate||d;
+   if(!d)return;
+   const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");
+   const group=x.type==="商品関連"?"product":"schedule";
+   const location=[x.meetingPlace?`集合場所：${x.meetingPlace}`:"",x.related||""] .filter(Boolean).join(" / ");
+   notifications.forEach(day=>{
+     if(day.key>=d && day.key<=ed)add(day,group,"予定",x.name,times||"予定",location,x.id,"schedule");
+   });
  });
 
  const renderNotifications=(list,emptyText)=>{
@@ -519,15 +556,16 @@ function scheduleList(){
  const today=new Date(); today.setHours(0,0,0,0);
  const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
  const getDate=s=>{if(s.date){const d=new Date(s.date+"T00:00:00");d.setHours(0,0,0,0);return d}if(s.start){const d=new Date(String(s.start).replace("T"," "));d.setHours(0,0,0,0);return d}return null};
+ const getEndDate=s=>{const v=s.endDate||s.date||String(s.start||"").slice(0,10);if(!v)return null;const d=new Date(v+"T00:00:00");d.setHours(0,0,0,0);return d};
  const current=[],future=[],past=[];
- list.forEach(s=>{const d=getDate(s);if(!d){past.push(s);return}if(d>=today&&d<nextMonthStart)current.push(s);else if(d>=nextMonthStart)future.push(s);else past.push(s)});
+ list.forEach(s=>{const d=getDate(s),ed=getEndDate(s);if(!d){past.push(s);return}if(ed>=today&&d<nextMonthStart)current.push(s);else if(d>=nextMonthStart)future.push(s);else past.push(s)});
  const sortByDate=(a,b)=>(getDate(a)||new Date(8640000000000000))-(getDate(b)||new Date(8640000000000000));
  current.sort(sortByDate);future.sort(sortByDate);past.sort((a,b)=>sortByDate(b,a));
  title("予定");
  const visibility=state.scheduleSections||{current:true,future:false,past:false};
  const toggleScheduleSection=key=>{state.scheduleSections=state.scheduleSections||{current:true,future:false,past:false};state.scheduleSections[key]=!state.scheduleSections[key];render()};
  window.toggleScheduleSection=toggleScheduleSection;
- const card=s=>{const cls=s.type==="イベント関連"?"schedule-event":s.type==="商品関連"?"schedule-product":s.type==="申込関連"?"schedule-order":"schedule-other";const time=[s.meetingTime?`集合 ${s.meetingTime}`:"",s.startTime?`開始 ${s.startTime}`:""].filter(Boolean).join(" / ");return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${date(s.date||String(s.start||"").slice(0,10))}${time?`　${esc(time)}`:""}</p></div>`};
+ const card=s=>{const cls=s.type==="イベント関連"?"schedule-event":s.type==="商品関連"?"schedule-product":s.type==="申込関連"?"schedule-order":"schedule-other";const time=[s.meetingTime?`集合 ${s.meetingTime}`:"",s.startTime?`開始 ${s.startTime}`:""].filter(Boolean).join(" / ");const d=s.date||String(s.start||"").slice(0,10),ed=s.endDate||d;const linked=(s.eventIds||[]).map(id=>events.find(e=>e.id==id)).filter(Boolean);return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${date(d)}${ed!==d?` ～ ${date(ed)}`:""}${time?`　${esc(time)}`:""}</p>${linked.length?`<p class="linked-label">イベント：${linked.map(e=>esc(e.name)).join("、")}</p>`:""}</div>`};
  const block=(key,label,items)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block schedule-list-block ${key}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleScheduleSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
  document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>予定</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('schedules')">☰ 絞り込み</button></div></div>${block("current","今月の予定",current)}${block("future","来月以降の予定",future)}${block("past","過去の予定",past)}${!list.length?`<div class="empty">${schedules.length?"条件に一致する予定がありません。":"予定がありません。"}</div>`:""}`;
 }
@@ -536,10 +574,192 @@ function closeFilter(){document.getElementById("filterModal")?.remove()}
 function clearFilter(kind){state.filters[kind]={type:"",keyword:""};closeFilter();render()}
 function applyFilter(kind){state.filters[kind]={type:document.getElementById("filterType").value,keyword:document.getElementById("filterKeyword").value.trim()};closeFilter();render()}
 function openSchedule(i){state.returnPage="schedules";state.scheduleId=i;state.page="schedule";render()} function openScheduleFromCalendar(i){state.returnPage="calendar";state.scheduleId=i;state.page="schedule";render()} window.openScheduleFromCalendar=openScheduleFromCalendar;
-function scheduleDetail(){const s=schedules.find(x=>x.id==state.scheduleId);if(!s){go("schedules");return}const d=s.date||String(s.start||"").slice(0,10);const meeting=s.meetingTime||(s.start?String(s.start).split("T")[1]:"");const startTime=s.startTime||(s.start?String(s.start).split("T")[1]:"");title("予定詳細",true);document.getElementById("screen").innerHTML=`<div class="hero"><span class="badge">${esc(s.type)}</span><h2>${esc(s.name)}</h2></div><div class="card">${detail("予定日",date(d))}${detail("集合時間",meeting)}${detail("集合場所",s.meetingPlace||"")}${detail("予定開始時刻",startTime)}${detail("予定種別",s.type)}${detail("関連情報",s.related)}${urlDetail("URL",s.url)}${detail("メモ",s.memo)}</div><div class="actions"><button class="secondary" onclick="editSchedule('${s.id}')">編集</button><button class="danger" onclick="deleteSchedule('${s.id}')">削除</button></div>`}
-function editSchedule(i){state.scheduleId=i;/* 予定詳細へ入る前の戻り先（一覧/カレンダー）を保持 */state.page="scheduleForm";render()}
-function scheduleForm(){const old=schedules.find(x=>x.id==state.scheduleId)||{};const s={name:"",date:state.prefillScheduleDate||"",meetingTime:"",startTime:"",type:"イベント関連",related:"",url:"",memo:"",...old};if(!s.date&&s.start)s.date=String(s.start).slice(0,10);if(!s.meetingTime&&s.start)s.meetingTime=String(s.start).split("T")[1]||"";if(!s.startTime&&s.start)s.startTime=String(s.start).split("T")[1]||"";title(state.scheduleId?"予定編集":"予定登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="scheduleForm"><div class="group"><label>予定名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(s.name)}"></div><div class="group"><label>予定日 <b class="req">必須</b></label><input class="input" name="date" type="date" required value="${esc(s.date)}"></div><div class="time-grid"><div class="group"><label>集合時間</label><input class="input" name="meetingTime" type="time" value="${esc(s.meetingTime)}"></div><div class="group"><label>予定開始時刻</label><input class="input" name="startTime" type="time" value="${esc(s.startTime)}"></div></div><div class="group"><label>集合場所</label><input class="input" name="meetingPlace" value="${esc(s.meetingPlace||"")}"></div><div class="group"><label>予定種別</label><select class="input" name="type">${["一般予定","仕事","旅行","イベント","ライブ","舞台","映画","スポーツ","食事","買い物","記念日","その他"].map(x=>`<option ${x==s.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>関連情報</label><input class="input" name="related" value="${esc(s.related)}"></div><div class="group"><label>URL</label><input class="input" name="url" type="url" placeholder="https://example.com" value="${esc(s.url||"")}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(s.memo)}</textarea></div><button class="primary">保存</button></form>`;document.getElementById("scheduleForm").onsubmit=saveSchedule}
-function saveSchedule(ev){ev.preventDefault();const f=new FormData(ev.target),d={name:String(f.get("name")).trim(),date:f.get("date"),meetingTime:f.get("meetingTime"),meetingPlace:String(f.get("meetingPlace")||"").trim(),startTime:f.get("startTime"),type:f.get("type"),related:String(f.get("related")||""),url:String(f.get("url")||"").trim(),memo:String(f.get("memo")||"")};if(!d.name){alert("予定名を入力してください");return}if(!d.date){alert("予定日を入力してください");return}if(state.scheduleId)Object.assign(schedules.find(s=>s.id==state.scheduleId),d);else{const s={id:id(),...d};schedules.unshift(s);state.scheduleId=s.id}save(KEY.schedules,schedules);state.page="schedule";render()}
+function scheduleDetail(){
+ const s=schedules.find(x=>x.id==state.scheduleId);
+ if(!s){go("schedules");return}
+ const d=s.date||String(s.start||"").slice(0,10);
+ const endDate=s.endDate||d;
+ const meeting=s.meetingTime||(s.start?String(s.start).split("T")[1]:"");
+ const startTime=s.startTime||(s.start?String(s.start).split("T")[1]:"");
+ const linkedEvents=(s.eventIds||[]).map(eid=>events.find(e=>e.id==eid)).filter(Boolean);
+ const dailyPlans=Array.isArray(s.dailyPlans)?s.dailyPlans:[];
+ const days=[]; let dayCur=new Date(d+"T00:00:00"), dayLast=new Date(endDate+"T00:00:00");
+ while(dayCur<=dayLast){const key=localDateKey(dayCur);const found=dailyPlans.find(x=>x.date===key);days.push({date:key,text:found?.text||""});dayCur.setDate(dayCur.getDate()+1);}
+ const dailyDetailHtml=days.length?days.map(day=>`<div class="daily-plan-detail-row"><div class="daily-plan-date">${date(day.date)}（${["日","月","火","水","木","金","土"][new Date(day.date+"T00:00:00").getDay()]}）</div><div class="daily-plan-detail-text">${day.text?esc(day.text).replace(/\n/g,"<br>"):"予定なし"}</div></div>`).join(""):"<div class=\"empty\">日ごとの予定はありません。</div>";
+ title("予定詳細",true);
+ const eventHtml=linkedEvents.length
+   ? `<div class="linked-events">${linkedEvents.map(e=>`<button type="button" class="linked-event" onclick="openLinkedEvent('${e.id}')"><span>${esc(e.name)}</span><small>${(e.performances||[]).length?esc(date((e.performances||[])[0].date)):"イベント詳細を見る"}　›</small></button>`).join("")}</div>`
+   : `<div class="empty linked-empty">関連イベントはありません。</div>`;
+ document.getElementById("screen").innerHTML=`<div class="hero"><span class="badge">${esc(s.type)}</span><h2>${esc(s.name)}</h2></div>
+ <div class="card">${detail("開始日",date(d))}${endDate!==d?detail("終了日",date(endDate)):""}${detail("集合時間",meeting)}${detail("集合場所",s.meetingPlace||"")}${detail("予定開始時刻",startTime)}${detail("予定種別",s.type)}${detail("関連情報",s.related)}${urlDetail("URL",s.url)}${detail("メモ",s.memo)}</div>
+ <div class="section"><h2>日ごとの予定</h2></div><div class="daily-plan-detail">${dailyDetailHtml}</div>
+ <div class="section"><h2>関連イベント</h2><span class="count">${linkedEvents.length}件</span></div>${eventHtml}
+ <div class="actions"><button class="secondary" onclick="editSchedule('${s.id}')">編集</button><button class="danger" onclick="deleteSchedule('${s.id}')">削除</button></div>`;
+}
+function openLinkedEvent(id){
+ state.returnPage="schedule";
+ state.eventId=id;
+ state.page="event";
+ render();
+}
+window.openLinkedEvent=openLinkedEvent;
+
+function editSchedule(i){state.scheduleId=i;state.page="scheduleForm";render()}
+
+function scheduleForm(){
+ const old=schedules.find(x=>x.id==state.scheduleId)||{};
+ const s=normalizeSchedule({name:"",date:state.prefillScheduleDate||"",endDate:state.prefillScheduleDate||"",meetingTime:"",startTime:"",meetingPlace:"",type:"一般予定",related:"",url:"",memo:"",eventIds:[],...old});
+ s.eventIds=Array.isArray(s.eventIds)?s.eventIds:[];
+ s.dailyPlans=Array.isArray(s.dailyPlans)?s.dailyPlans:[];
+ // 編集時は、保存済みの日ごとの予定からも終了日を復元する。
+ // 旧データで endDate が欠落していても、複数日分の入力欄を失わない。
+ const dailyPlanDates=s.dailyPlans.map(x=>String(x?.date||"").slice(0,10)).filter(Boolean);
+ const maxDailyPlanDate=dailyPlanDates.reduce((max,v)=>v>max?v:max,"");
+ if(maxDailyPlanDate && (!s.endDate || maxDailyPlanDate>s.endDate)){
+   s.endDate=maxDailyPlanDate;
+ }
+ if(s.date && (!s.endDate || s.endDate<s.date)) s.endDate=s.date;
+ title(state.scheduleId?"予定編集":"予定登録",true);
+ const eventMatches=(e,start,end)=>{
+   const from=start||"";
+   const to=end||start||"";
+   if(!from)return true;
+   return (e.performances||[]).some(p=>{
+     const pd=String(p.date||"").slice(0,10);
+     return pd && pd>=from && (!to || pd<=to);
+   });
+ };
+ const eventOptionsFor=(start,end)=>{
+   const matched=events.filter(e=>eventMatches(e,start,end));
+   return matched.length
+     ? matched.map(e=>`<label class="event-check"><input type="checkbox" name="eventIds" value="${esc(e.id)}" ${s.eventIds.includes(e.id)?"checked":""}><span><b>${esc(e.name)}</b><small>${(e.performances||[]).filter(p=>{const pd=String(p.date||"").slice(0,10);return pd>=start&&(!end||pd<=end)}).map(p=>date(p.date)).join(" / ")}</small></span></label>`).join("")
+     : `<div class="empty linked-empty">${events.length?"開始日～終了日の期間に公演があるイベントはありません。":"登録済みのイベントがありません。"}</div>`;
+ };
+ const hasSelectedDate=Boolean(s.date);
+ const eventOptions=hasSelectedDate?eventOptionsFor(s.date,s.endDate):`<div class="empty linked-empty">開始日を選択すると、該当するイベントが表示されます。</div>`;
+ const dailyPlanRows=()=>{
+   const start=document.querySelector('#scheduleForm input[name="date"]')?.value||s.date||"";
+   const end=document.querySelector('#scheduleForm input[name="endDate"]')?.value||s.endDate||start;
+   if(!start)return `<div class="empty daily-plan-empty">開始日を選択すると、日ごとの予定欄が表示されます。</div>`;
+   const rows=[]; let cur=new Date(start+"T00:00:00"), last=new Date(end+"T00:00:00");
+   while(cur<=last){
+     const key=localDateKey(cur), found=s.dailyPlans.find(x=>x.date===key);
+     const week=["日","月","火","水","木","金","土"][cur.getDay()];
+     rows.push(`<div class="daily-plan-row"><div class="daily-plan-date">${date(key)}（${week}）</div><textarea class="input daily-plan-input" data-date="${key}" rows="3" placeholder="この日の予定を入力">${esc(found?.text||"")}</textarea></div>`);
+     cur.setDate(cur.getDate()+1);
+   }
+   return rows.join("");
+ };
+ document.getElementById("screen").innerHTML=`<form class="form" id="scheduleForm">
+ <div class="group"><label>予定名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(s.name)}"></div>
+ <div class="time-grid"><div class="group"><label>開始日 <b class="req">必須</b></label><input class="input" name="date" type="date" required value="${esc(s.date)}"></div><div class="group"><label>終了日</label><input class="input" name="endDate" type="date" value="${esc(s.endDate)}"></div></div>
+ <div class="group daily-plans-group"><label>日ごとの予定</label><div id="dailyPlans">${dailyPlanRows()}</div></div>
+ <div class="time-grid"><div class="group"><label>集合時間</label><input class="input" name="meetingTime" type="time" value="${esc(s.meetingTime)}"></div><div class="group"><label>予定開始時刻</label><input class="input" name="startTime" type="time" value="${esc(s.startTime)}"></div></div>
+ <div class="group"><label>集合場所</label><input class="input" name="meetingPlace" value="${esc(s.meetingPlace||"")}"></div>
+ <div class="group"><label>予定種別</label><select class="input" name="type">${["一般予定","仕事","旅行","イベント","ライブ","舞台","映画","スポーツ","食事","買い物","記念日","その他"].map(x=>`<option ${x==s.type?"selected":""}>${x}</option>`).join("")}</select></div>
+ <div class="group"><label>関連イベント</label><div class="event-picker">${eventOptions}</div></div>
+ <div class="group"><label>関連情報</label><input class="input" name="related" value="${esc(s.related)}"></div>
+ <div class="group"><label>URL</label><input class="input" name="url" type="url" placeholder="https://example.com" value="${esc(s.url||"")}"></div>
+ <div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(s.memo)}</textarea></div>
+ <button class="primary">保存</button></form>`;
+ document.getElementById("scheduleForm").onsubmit=saveSchedule;
+ const dateInput=document.querySelector('#scheduleForm input[name="date"]');
+ const endInput=document.querySelector('#scheduleForm input[name="endDate"]');
+ const picker=document.querySelector('#scheduleForm .event-picker');
+ const dailyPlansBox=document.getElementById('dailyPlans');
+ // 日付を変更して再描画するときも、すでに入力した各日の内容を保持する
+ const captureDailyPlans=()=>{
+   if(!dailyPlansBox)return;
+   const current=[...dailyPlansBox.querySelectorAll('.daily-plan-input')].map(x=>({date:x.dataset.date,text:x.value}));
+   if(current.length){
+     const byDate=new Map((s.dailyPlans||[]).map(x=>[x.date,x]));
+     current.forEach(x=>byDate.set(x.date,x));
+     s.dailyPlans=[...byDate.values()];
+   }
+ };
+ const refreshDailyPlans=()=>{
+   captureDailyPlans();
+   if(dailyPlansBox) dailyPlansBox.innerHTML=dailyPlanRows();
+ };
+ const refreshEventPicker=()=>{
+   if(!picker)return;
+   const start=dateInput?.value||"";
+   const end=endInput?.value||start||"";
+   if(!start){
+     s.eventIds=[];
+     picker.innerHTML=`<div class="empty linked-empty">開始日を選択すると、該当するイベントが表示されます。</div>`;
+     return;
+   }
+   const selected=[...picker.querySelectorAll('input[name="eventIds"]:checked')].map(x=>x.value);
+   s.eventIds=selected;
+   picker.innerHTML=eventOptionsFor(start,end);
+ };
+ dateInput?.addEventListener("change",()=>{if(!endInput.value||endInput.value<dateInput.value)endInput.value=dateInput.value;refreshDailyPlans();refreshEventPicker()});
+ endInput?.addEventListener("change",()=>{if(dateInput.value&&endInput.value<dateInput.value)endInput.value=dateInput.value;refreshDailyPlans();refreshEventPicker()});
+}
+function saveSchedule(ev){
+ ev.preventDefault();
+ const form=ev.target;
+ const f=new FormData(form);
+ const startDate=String(f.get("date")||"");
+ const endDateRaw=String(f.get("endDate")||"");
+ const endDate=endDateRaw||startDate;
+
+ // 画面に存在する全日付の入力を保存。空欄の日も日付レコードとして保持する。
+ const enteredDailyPlans=[...form.querySelectorAll('.daily-plan-input')].map(x=>({
+   date:String(x.dataset.date||""),
+   text:String(x.value||"").trim()
+ })).filter(x=>x.date);
+
+ const target=state.scheduleId ? schedules.find(x=>x.id==state.scheduleId) : null;
+ const oldDaily=target && Array.isArray(target.dailyPlans) ? target.dailyPlans : [];
+ const dailyMap=new Map(oldDaily.filter(x=>x&&x.date).map(x=>[x.date,{date:x.date,text:String(x.text||"")} ]));
+ enteredDailyPlans.forEach(x=>dailyMap.set(x.date,x));
+
+ // 現在の開始日～終了日に含まれない古い日付は削除するが、期間内の内容は絶対に消さない。
+ // 開始日～終了日の全日付を必ず保持する。入力が空の日も削除しない。
+ if(startDate && endDate){
+   let cur=new Date(startDate+"T00:00:00"), last=new Date(endDate+"T00:00:00");
+   while(cur<=last){
+     const key=localDateKey(cur);
+     if(!dailyMap.has(key)) dailyMap.set(key,{date:key,text:""});
+     cur.setDate(cur.getDate()+1);
+   }
+ }
+ const dailyPlans=[...dailyMap.values()]
+   .filter(x=>!startDate || (x.date>=startDate && x.date<=endDate))
+   .sort((a,b)=>a.date.localeCompare(b.date));
+
+ const d={
+   name:String(f.get("name")||"").trim(),
+   date:startDate,
+   endDate:endDate,
+   meetingTime:String(f.get("meetingTime")||""),
+   meetingPlace:String(f.get("meetingPlace")||"").trim(),
+   startTime:String(f.get("startTime")||""),
+   type:String(f.get("type")||"一般予定"),
+   eventIds:f.getAll("eventIds"),
+   dailyPlans,
+   related:String(f.get("related")||""),
+   url:String(f.get("url")||"").trim(),
+   memo:String(f.get("memo")||"")
+ };
+ if(!d.name){alert("予定名を入力してください");return}
+ if(!d.date){alert("開始日を入力してください");return}
+ if(d.endDate<d.date){alert("終了日は開始日以降を指定してください");return}
+ if(state.scheduleId){
+   const index=schedules.findIndex(x=>x.id==state.scheduleId);
+   if(index>=0) schedules[index]={...schedules[index],...d,id:schedules[index].id};
+ }
+ else{
+   const item={id:id(),...d};
+   schedules.unshift(item);
+   state.scheduleId=item.id;
+ }
+ save(KEY.schedules,schedules);
+ state.page="schedule";
+ render();
+}
 function deleteSchedule(i){if(!confirm("予定を削除しますか？"))return;schedules=schedules.filter(s=>s.id!=i);save(KEY.schedules,schedules);go("schedules")}
 
 function openCalendarDetail(item){
@@ -617,7 +837,7 @@ function calendar(){
      if(cf.announcement!==false&&a.method==="抽選"&&a.announcement===k)addCalendarItem(items,{name:e.name,text:(a.name||"申込")+" 発表日",type:"発表日",cls:"cal-announcement",status:a.status,entityId:e.id,kind:"event"});
    }));
    products.forEach(p=>{const type=p.type||"POP UP",isOrder=type==="受注販売",isPrize=["一番くじ","UFOキャッチャー","その他景品"].includes(type);if(isPrize){if(cf.prize!==false&&p.start===k)addCalendarItem(items,{name:p.name,text:"景品発売日",type:"景品発売",cls:"cal-prize",entityId:p.id,kind:"product"});return}if(type!=="通常販売"&&cf.popup!==false&&!isOrder){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-popup",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-popup",entityId:p.id,kind:"product"})}if(isOrder&&cf.order!==false){if(p.start===k)addCalendarItem(items,{name:p.name,text:type+" 開始",type:type+"開始",cls:"cal-order",entityId:p.id,kind:"product"});if(p.end===k)addCalendarItem(items,{name:p.name,text:type+" 終了",type:type+"終了",cls:"cal-order",entityId:p.id,kind:"product"})}});
-   schedules.forEach(x=>{if(cf.schedule!==false&&(x.date||String(x.start||"").slice(0,10))===k){const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");addCalendarItem(items,{name:x.name,text:times||"予定",type:x.type||"一般予定",cls:"cal-schedule",entityId:x.id,kind:"schedule"})}});
+   schedules.forEach(x=>{const sd=x.date||String(x.start||"").slice(0,10),ed=x.endDate||sd;if(cf.schedule!==false&&sd&&k>=sd&&k<=ed){const times=[x.meetingTime?`集合 ${x.meetingTime}`:"",x.startTime?`開始 ${x.startTime}`:""].filter(Boolean).join(" / ");addCalendarItem(items,{name:x.name,text:times||"予定",type:x.type||"一般予定",cls:"cal-schedule",entityId:x.id,kind:"schedule"})}});
    return items;
  }
 

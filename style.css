@@ -1472,3 +1472,61 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
   .product-controls-under-title .product-filter-button{padding:5px 8px;font-size:11px}
   .product-wishlist-row .wishlist-button{padding:4px 8px;font-size:11px}
 }
+
+/* 予定の複数日・関連イベント */
+.event-picker{display:flex;flex-direction:column;gap:6px}
+.event-check{display:flex;align-items:center;gap:9px;background:#18181e;border:1px solid #303039;border-radius:8px;padding:9px;cursor:pointer}
+.event-check input{width:16px;height:16px;accent-color:#9275ed}
+.event-check span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.event-check b{font-size:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event-check small{font-size:7px;color:#9999a3}
+.linked-events{display:flex;flex-direction:column;gap:7px}
+.linked-event{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#18181e;border:1px solid #303039;border-radius:8px;padding:10px;color:#fff;text-align:left;cursor:pointer}
+.linked-event span{font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linked-event small{font-size:7px;color:#9999a3;white-space:nowrap}
+.linked-empty{padding:16px 0}
+.linked-label{color:#bdafff!important}
+
+
+/* 関連イベント：白基調でも読みやすい配色 */
+.event-check {
+  background: #ffffff;
+  border-color: #dfe3e8;
+  color: #22252a;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.event-check:hover {
+  background: #faf9ff;
+  border-color: #cfc7f3;
+}
+.event-check b { color: #22252a; }
+.event-check small { color: #6f757d; }
+.event-check input { accent-color: #8a70e8; }
+.linked-event {
+  background: #ffffff;
+  border-color: #dfe3e8;
+  color: #22252a;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.linked-event:hover {
+  background: #faf9ff;
+  border-color: #cfc7f3;
+}
+.linked-event span { color: #22252a; }
+.linked-event small { color: #6f757d; }
+.linked-label { color: #7057c7 !important; }
+
+/* ===== 予定：日ごとの予定 ===== */
+.daily-plans-group{margin-top:10px}
+.daily-plan-row{padding:12px;border:1px solid #e1e4e8;border-radius:10px;background:#ffffff;margin-bottom:10px;box-shadow:0 1px 3px rgba(50,60,90,.05)}
+.daily-plan-row:first-child{border-top:1px solid #e1e4e8}
+.daily-plan-date{font-size:13px;font-weight:700;color:#33373d;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.daily-plan-date::before{content:"";width:4px;height:16px;border-radius:3px;background:#9275ed;display:inline-block}
+.daily-plan-input{min-height:76px;resize:vertical;box-sizing:border-box;line-height:1.6;background:#ffffff;border:1px solid #d7dbe0;color:#33373d;border-radius:8px;font-size:13px;padding:11px}
+.daily-plan-input:focus{border-color:#9275ed}
+.daily-plan-empty{padding:18px 5px}
+.daily-plan-detail{margin:0 0 14px}
+.daily-plan-detail-row{padding:13px;border:1px solid #e1e4e8;border-radius:10px;background:#ffffff;margin-bottom:9px;box-shadow:0 1px 3px rgba(50,60,90,.05)}
+.daily-plan-detail-row .daily-plan-date{font-size:13px;margin-bottom:8px}
+.daily-plan-detail-text{font-size:12px;line-height:1.8;color:#4a4f56;white-space:normal;min-height:20px}
+.daily-plan-detail-text:empty{color:#8d8d96}
