@@ -15,6 +15,34 @@ window.addEventListener("load", lockPortraitOrientation);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) lockPortraitOrientation(); });
 const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1"};
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
+// イベントの公演日ごとの情報を正規化。旧形式の出演者は公演1へ移行する。
+function normalizeEvent(e){
+  e=e||{};
+  e.performances=Array.isArray(e.performances)?e.performances:[];
+  if(!e.performances.length)e.performances=[{date:""}];
+  e.performances=e.performances.map((p,i)=>{
+    p=p||{};
+    if(i===0 && !p.performers && e.performers)p.performers=e.performers;
+    p.performers=String(p.performers||"");
+    p.dayName=String(p.dayName||"");
+    p.id=String(p.id||id());
+    return p;
+  });
+  // 旧形式の申込はイベント全体への申込として扱い、既存データとの互換性を保つ。
+  e.applications=Array.isArray(e.applications)?e.applications:[];
+  e.applications=e.applications.map(a=>{
+    a=a||{};
+    if(!Array.isArray(a.performanceIds)) a.performanceIds=e.performances.map(p=>p.id);
+    if(!a.performanceStatuses || typeof a.performanceStatuses!=="object") a.performanceStatuses={};
+    a.performanceIds.forEach(pid=>{ if(!a.performanceStatuses[pid]) a.performanceStatuses[pid]=a.status||"未応募"; });
+    return a;
+  });
+  // 旧イベントの全体出演者は公演1へ移したため、イベント全体欄は空にする。
+  e.performers="";
+  return e;
+}
+events=events.map(normalizeEvent);
+
 // 旧形式・旧保存形式を含め、予定を常に「開始日～終了日＋日ごとの予定」の形へ正規化
 function normalizeSchedule(s){
   s=s||{};
@@ -222,7 +250,7 @@ function home(){
      const announcementDay=dayFor(a.announcement); if(announcementDay)add(announcementDay,"event","発表日",e.name,"発表日",a.name||"",e.id,"event");
    });
    (e.performances||[]).forEach(p=>{
-     const performanceDay=dayFor(p.date); if(performanceDay){const location=[p.meetingPlace?`集合場所：${p.meetingPlace}`:"",p.venue?`会場：${p.venue}`:""].filter(Boolean).join(" / ");add(performanceDay,"event","公演日",e.name,`公演日${p.start?` ${p.start}`:""}`,location,e.id,"event");}
+     const performanceDay=dayFor(p.date); if(performanceDay){const times=[p.open?`開場 ${p.open}`:"",p.start?`開演 ${p.start}`:""].filter(Boolean).join(" "); const performanceLabel=[p.venue?String(p.venue).trim():"",times].filter(Boolean).join(times?" / ":""); add(performanceDay,"event","公演日",`${e.name}${p.dayName?`（${p.dayName}）`:""}`,performanceLabel,"",e.id,"event");}
    });
  });
 
@@ -328,12 +356,21 @@ function statusClass(status){return ({"受付中":"open","応募予定":"planned
 function applicationRows(e){
  const apps=e.applications||[];
  if(!apps.length)return `<div class="application-empty">申込はありません</div>`;
- return `<div class="application-table"><div class="application-row application-head"><span>名称</span><span>期間</span><span>発表日</span><span>ステータス</span></div>${apps.map(a=>`<div class="application-row"><span class="application-name">${esc(a.name||"申込")}</span><span class="application-period">${a.start||a.end?`<span>${dt(a.start)}</span><span>～ ${dt(a.end)}</span>`:"―"}</span><span>${a.announcement?date(a.announcement):"―"}</span><span class="status status-${statusClass(a.status)}">${esc(a.status||"未応募")}</span></div>`).join("")}</div>`;
+ return `<div class="application-cards">${apps.map(a=>{
+   const selected=(a.performanceIds||[]).map(pid=>e.performances.find(x=>x.id===pid)).filter(Boolean);
+   const rows=selected.length?selected:[null];
+   return `<div class="application-card"><div class="application-card-title">${esc(a.name||"申込")}</div><div class="application-table"><div class="application-row application-head"><span>対象公演</span><span>期間</span><span>発表日</span><span>ステータス</span></div>${rows.map((p,i)=>{
+     const pid=p?.id;
+     const status=pid?(a.performanceStatuses||{})[pid]||a.status||"未応募":a.status||"未応募";
+     const pname=p?(p.dayName||`公演 ${e.performances.indexOf(p)+1}`):"未設定";
+     return `<div class="application-row"><span>${esc(pname)}</span><span class="application-period">${a.start||a.end?`<span>${dt(a.start)}</span><span>～ ${dt(a.end)}</span>`:"―"}</span><span>${a.announcement?dt(a.announcement):"―"}</span><span class="status status-${statusClass(status)}">${esc(status)}</span></div>`;
+   }).join("")}</div></div>`;
+ }).join("")}</div>`;
 }
-function eventCard(e){return `<div class="item list-calendar-event" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　<span class="event-application-label">申込</span> ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full"><span class="summary-label">申込</span>${applicationRows(e)}</div></div>`}
+function eventCard(e){return `<div class="item list-calendar-event" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　<span class="event-application-label">申込</span> ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full">${applicationRows(e)}</div></div>`}
 function eventsList(){
  const f=state.filters.events;
- const filtered=events.filter(e=>(!f.type||e.type===f.type)&&(!f.keyword||[e.name,e.performers].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
+ const filtered=events.filter(e=>(!f.type||e.type===f.type)&&(!f.keyword||[e.name,e.performers,...(e.performances||[]).map(p=>p.performers||"")].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
  const today=new Date(); today.setHours(0,0,0,0);
  const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
  const getPerformanceDates=e=>(e.performances||[]).map(p=>p.date).filter(Boolean).map(d=>{const x=new Date(d+"T00:00:00");x.setHours(0,0,0,0);return x;});
@@ -367,19 +404,18 @@ function eventDetail(){
      <button class="secondary" style="width:auto;padding:6px 12px;font-size:8px" onclick="editEvent('${e.id}')">編集</button>
    </div>
    <h2>${esc(e.name)}</h2>
-   <div class="sub">${esc(e.performers||"出演者未登録")}</div>
  </div>
- <div class="card">${detail("イベント名",e.name)}${detail("イベント種別",e.type)}${detail("出演者",e.performers)}${urlDetail("イベントURL",e.url)}${detail("メモ",e.memo)}</div>
+ <div class="card">${detail("イベント名",e.name)}${detail("イベント種別",e.type)}${urlDetail("イベントURL",e.url)}${detail("メモ",e.memo)}</div>
  <div class="section"><h2>公演日</h2><span class="count">${e.performances.length}件</span></div>
  ${e.performances.map((p,i)=>`<div class="card" style="margin-bottom:8px">
-   <div class="row"><b style="font-size:9px">公演 ${i+1}</b><span class="badge">${date(p.date)}</span></div>
-   ${detail("開場",p.open)}${detail("開演",p.start)}${detail("会場",p.venue)}${detail("メモ",p.memo)}
+   <div class="row"><b class="performance-heading">公演 ${i+1}${p.dayName?`：${esc(p.dayName)}`:""}</b><span class="badge">${date(p.date)}</span></div>
+   ${detail("出演者",p.performers)}${detail("開場",p.open)}${detail("開演",p.start)}${detail("会場",p.venue)}${detail("メモ",p.memo)}
  </div>`).join("")}
  <div class="section"><h2>申込</h2><span class="count">${apps.length}件</span></div>
  ${apps.length?`<div class="list">${apps.map(a=>`<div class="item">
    <div class="row"><h3>${esc(a.name||"申込")}</h3><span class="badge">${esc(a.method)}</span></div>
    <p>${dt(a.start)} ～ ${dt(a.end)}</p>
-   <span class="status">${esc(a.status)}</span>
+   ${applicationPerformanceText(e,a)}
    ${a.ticketSiteName?`<div style="margin-top:8px">${detail("チケットサイト",a.ticketSiteName)}</div>`:""}
    <div class="actions">
      <button class="secondary" onclick="editApplication('${e.id}','${a.id}')">編集</button>
@@ -389,16 +425,53 @@ function eventDetail(){
  <button class="primary" style="margin-top:10px" onclick="addApplication('${e.id}')">＋ このイベントに申込を追加</button>
  <div class="actions"><button class="danger" onclick="deleteEvent('${e.id}')">イベントを削除</button></div>`;
 }
+
 function editEvent(id){state.eventId=id;state.page="eventForm";render()}
-function eventForm(){const e=events.find(x=>x.id==state.eventId)||{name:"",type:"ライブ",performers:"",url:"",memo:"",performances:[{date:state.prefillEventDate||""}]};title(state.eventId?"イベント編集":"イベント登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="eventForm"><div class="group"><label>イベント名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(e.name)}"></div><div class="group"><label>イベント種別</label><select class="input" name="type">${["ライブ","舞台","イベント","その他"].map(x=>`<option ${x==e.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>出演者</label><input class="input" name="performers" value="${esc(e.performers)}"></div><div class="group"><label>イベントURL</label><input class="input" name="url" type="url" value="${esc(e.url)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(e.memo)}</textarea></div><div class="section"><h2>公演日</h2><span class="count">1件以上必須</span></div><div id="performanceList">${e.performances.length?e.performances.map(perf).join(""):perf({})}</div><button type="button" class="secondary" onclick="addPerformance()">＋ 公演日を追加</button><button class="primary" style="margin-top:10px">${state.eventId?"変更を保存":"イベントを登録"}</button></form>`;document.getElementById("eventForm").onsubmit=saveEvent}
-function perf(p={}){return `<div class="performance"><div class="performance-title"><b>公演日</b><button type="button" class="remove" onclick="this.closest('.performance').remove()">削除</button></div><div class="group"><label>日付 <b class="req">必須</b></label><input class="input" data-p="date" type="date" required value="${esc(p.date||"")}"></div><div class="time-grid"><div class="group"><label>開場時間</label><input class="input" data-p="open" type="time" value="${esc(p.open||"")}"></div><div class="group"><label>開演時間</label><input class="input" data-p="start" type="time" value="${esc(p.start||"")}"></div></div><div class="group"><label>会場</label><input class="input" data-p="venue" value="${esc(p.venue||"")}"></div><div class="group"><label>集合場所</label><input class="input" data-p="meetingPlace" value="${esc(p.meetingPlace||"")}"></div><div class="group"><label>メモ</label><textarea class="input textarea" data-p="memo">${esc(p.memo||"")}</textarea></div></div>`}
+function eventForm(){const e=events.find(x=>x.id==state.eventId)||{name:"",type:"ライブ",performers:"",url:"",memo:"",performances:[{date:state.prefillEventDate||""}]};title(state.eventId?"イベント編集":"イベント登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="eventForm"><div class="group"><label>イベント名 <b class="req">必須</b></label><input class="input" name="name" required value="${esc(e.name)}"></div><div class="group"><label>イベント種別</label><select class="input" name="type">${["ライブ","舞台","イベント","その他"].map(x=>`<option ${x==e.type?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>イベントURL</label><input class="input" name="url" type="url" value="${esc(e.url)}"></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(e.memo)}</textarea></div><div class="section"><h2>公演日</h2><span class="count">1件以上必須</span></div><div id="performanceList">${e.performances.length?e.performances.map(perf).join(""):perf({})}</div><button type="button" class="secondary" onclick="addPerformance()">＋ 公演日を追加</button><button class="primary" style="margin-top:10px">${state.eventId?"変更を保存":"イベントを登録"}</button></form>`;document.getElementById("eventForm").onsubmit=saveEvent}
+function perf(p={}){return `<div class="performance"><div class="performance-title"><b>公演日</b><button type="button" class="remove" onclick="this.closest('.performance').remove()">削除</button></div><div class="group"><label>日付 <b class="req">必須</b></label><input class="input" data-p="date" type="date" required value="${esc(p.date||"")}"></div><div class="group"><label>名前（例：DAY1、DAY2）</label><input class="input" data-p="dayName" value="${esc(p.dayName||"")}"></div><div class="group"><label>出演者</label><input class="input" data-p="performers" value="${esc(p.performers||"")}"></div><div class="time-grid"><div class="group"><label>開場時間</label><input class="input" data-p="open" type="time" value="${esc(p.open||"")}"></div><div class="group"><label>開演時間</label><input class="input" data-p="start" type="time" value="${esc(p.start||"")}"></div></div><div class="group"><label>会場</label><input class="input" data-p="venue" value="${esc(p.venue||"")}"></div><div class="group"><label>メモ</label><textarea class="input textarea" data-p="memo">${esc(p.memo||"")}</textarea></div></div>`}
 function addPerformance(){document.getElementById("performanceList").insertAdjacentHTML("beforeend",perf({}))}
-function saveEvent(ev){ev.preventDefault();const f=new FormData(ev.target),rows=[...document.querySelectorAll(".performance")];if(!rows.length){alert("公演日は1件以上必要です");return}const performances=rows.map(r=>{const p={};r.querySelectorAll("[data-p]").forEach(x=>p[x.dataset.p]=x.value);return p});if(performances.some(x=>!x.date)){alert("公演日の日付は必須です");return}const d={name:String(f.get("name")).trim(),type:f.get("type"),performers:String(f.get("performers")||""),url:String(f.get("url")||""),memo:String(f.get("memo")||""),performances};if(state.eventId){Object.assign(events.find(x=>x.id==state.eventId),d)}else{const e={id:id(),...d,applications:[]};events.unshift(e);state.eventId=e.id}save(KEY.events,events);state.page="event";render()}
+function saveEvent(ev){ev.preventDefault();const f=new FormData(ev.target),rows=[...document.querySelectorAll(".performance")];if(!rows.length){alert("公演日は1件以上必要です");return}const oldEvent=state.eventId?events.find(x=>x.id==state.eventId):null;const performances=rows.map((r,i)=>{const p={};r.querySelectorAll("[data-p]").forEach(x=>p[x.dataset.p]=x.value);p.id=oldEvent?.performances?.[i]?.id||id();return p});if(performances.some(x=>!x.date)){alert("公演日の日付は必須です");return}const d={name:String(f.get("name")).trim(),type:f.get("type"),performers:"",url:String(f.get("url")||""),memo:String(f.get("memo")||""),performances};if(state.eventId){Object.assign(events.find(x=>x.id==state.eventId),d)}else{const e={id:id(),...d,applications:[]};events.unshift(e);state.eventId=e.id}save(KEY.events,events);state.page="event";render()}
 function deleteEvent(i){if(!confirm("イベントを削除しますか？"))return;events=events.filter(e=>e.id!=i);save(KEY.events,events);go("events")}
 function addApplication(eventId){state.eventId=eventId;state.orderId=null;state.page="orderForm";render()}
 function editApplication(eventId,appId){state.eventId=eventId;state.orderId=appId;state.page="orderForm";render()}
-function orderForm(){const e=events.find(x=>x.id==state.eventId);if(!e){go("events");return}const a=(e.applications||[]).find(x=>x.id==state.orderId)||{name:"",method:"抽選",ticketSiteName:"",start:"",end:"",announcement:"",status:"未応募",quantity:1,payment:"",memo:""};title(state.orderId?"申込編集":"申込登録",true);document.getElementById("screen").innerHTML=`<form class="form" id="orderForm"><div class="card" style="margin-bottom:12px">${detail("対象イベント",e.name)}</div><div class="group"><label>名称 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：1次応募、2次応募、一般販売" value="${esc(a.name)}"></div><div class="group"><label>申込方式</label><select class="input" name="method">${["抽選","先着"].map(x=>`<option ${x==a.method?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>チケットサイト名</label><input class="input" name="ticketSiteName" placeholder="例：イープラス、チケットぴあ" value="${esc(a.ticketSiteName||"")}"></div><div class="time-grid"><div class="group"><label>受付開始日時</label><input class="input compact-order-date" name="start" type="datetime-local" value="${esc(a.start)}"></div><div class="group"><label>受付終了日時</label><input class="input compact-order-date" name="end" type="datetime-local" value="${esc(a.end)}"></div></div><div class="group announcement-group ${a.method==="抽選"?"":"hidden"}"><label>発表日</label><input class="input compact-order-date" name="announcement" type="date" value="${esc(a.announcement||"")}"></div><div class="group"><label>ステータス</label><select class="input" name="status">${["未応募","応募予定","受付前","受付中","受付終了","応募済み","当選","落選"].map(x=>`<option ${x==a.status?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>数量</label><input class="input" name="quantity" type="number" min="1" value="${a.quantity||1}"></div><div class="group"><label>支払情報</label><select class="input" name="payment"><option value="">未選択</option>${["クレジットカード","コンビニ決済","スマホ決済","その他"].map(x=>`<option value="${x}" ${x==a.payment?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(a.memo)}</textarea></div><button class="primary">保存</button></form>`;const form=document.getElementById("orderForm");const method=form.querySelector('[name="method"]');const announcementGroup=form.querySelector(".announcement-group");method.addEventListener("change",()=>announcementGroup.classList.toggle("hidden",method.value!=="抽選"));form.onsubmit=saveApplication}
-function saveApplication(ev){ev.preventDefault();const e=events.find(x=>x.id==state.eventId),f=new FormData(ev.target),d={name:String(f.get("name")).trim(),method:f.get("method"),ticketSiteName:String(f.get("ticketSiteName")||"").trim(),start:f.get("start"),end:f.get("end"),announcement:f.get("method")==="抽選"?f.get("announcement"):"",status:f.get("status"),quantity:Number(f.get("quantity")||1),payment:String(f.get("payment")||""),memo:String(f.get("memo")||"")};if(!d.name){alert("名称を入力してください");return}e.applications=e.applications||[];if(state.orderId)Object.assign(e.applications.find(a=>a.id==state.orderId),d);else e.applications.push({id:id(),...d});save(KEY.events,events);state.page="event";render()}
+function applicationPerformanceText(e,a){
+ const ids=Array.isArray(a.performanceIds)?a.performanceIds:[];
+ if(!ids.length)return `<div class="application-performance"><small>対象公演：未設定</small></div>`;
+ return `<div class="application-performance"><small>対象公演ごとの結果</small><div class="performance-result-list">${ids.map(pid=>{const p=e.performances.find(x=>x.id===pid);if(!p)return "";const status=(a.performanceStatuses||{})[pid]||a.status||"未応募";return `<div class="performance-result-item"><span>${esc(p.dayName||`公演 ${e.performances.indexOf(p)+1}`)}</span><span class="status status-${statusClass(status)}">${esc(status)}</span></div>`}).join("")}</div></div>`;
+}
+function orderForm(){
+ const e=events.find(x=>x.id==state.eventId);
+ if(!e){go("events");return}
+ const a=(e.applications||[]).find(x=>x.id==state.orderId)||{name:"",method:"抽選",ticketSiteName:"",start:"",end:"",announcement:"",status:"未応募",quantity:1,payment:"",memo:"",performanceIds:e.performances.map(p=>p.id),performanceStatuses:{}};
+ const selectedIds=Array.isArray(a.performanceIds)?a.performanceIds:[];
+ const statuses=a.performanceStatuses&&typeof a.performanceStatuses==="object"?a.performanceStatuses:{};
+ title(state.orderId?"申込編集":"申込登録",true);
+ document.getElementById("screen").innerHTML=`<form class="form" id="orderForm"><div class="card" style="margin-bottom:12px">${detail("対象イベント",e.name)}</div><div class="group"><label>名称 <b class="req">必須</b></label><input class="input" name="name" required placeholder="例：1次応募、2次応募、一般販売" value="${esc(a.name)}"></div><div class="group"><label>対象公演 <b class="req">1件以上</b></label><div class="performance-select-list">${e.performances.map((p,i)=>`<label class="event-check"><input type="checkbox" name="performanceIds" value="${esc(p.id)}" ${selectedIds.includes(p.id)?"checked":""}><span><b>${esc(p.dayName||`公演 ${i+1}`)}</b><small>${date(p.date)}${p.venue?`　${esc(p.venue)}`:""}</small></span></label>`).join("")}</div></div><div class="group"><label>公演ごとの結果・ステータス</label><div id="performanceStatusList" class="performance-status-editor"></div></div><div class="group"><label>申込方式</label><select class="input" name="method">${["抽選","先着"].map(x=>`<option ${x==a.method?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>チケットサイト名</label><input class="input" name="ticketSiteName" placeholder="例：イープラス、チケットぴあ" value="${esc(a.ticketSiteName||"")}"></div><div class="time-grid"><div class="group"><label>受付開始日時</label><input class="input compact-order-date" name="start" type="datetime-local" value="${esc(a.start)}"></div><div class="group"><label>受付終了日時</label><input class="input compact-order-date" name="end" type="datetime-local" value="${esc(a.end)}"></div></div><div class="group announcement-group ${a.method==="抽選"?"":"hidden"}"><label>発表日</label><input class="input compact-order-date" name="announcement" type="date" value="${esc(a.announcement||"")}"></div><div class="group"><label>全体ステータス</label><select class="input" name="status">${["未応募","応募予定","受付前","受付中","受付終了","応募済み","当選","落選"].map(x=>`<option ${x==a.status?"selected":""}>${x}</option>`).join("")}</select><small class="form-note">公演ごとの結果を設定すると、こちらは全体の目安として扱われます。</small></div><div class="group"><label>数量</label><input class="input" name="quantity" type="number" min="1" value="${a.quantity||1}"></div><div class="group"><label>支払情報</label><select class="input" name="payment"><option value="">未選択</option>${["クレジットカード","コンビニ決済","スマホ決済","その他"].map(x=>`<option value="${x}" ${x==a.payment?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>メモ</label><textarea class="input textarea" name="memo">${esc(a.memo)}</textarea></div><button class="primary">保存</button></form>`;
+ const form=document.getElementById("orderForm");
+ const statusList=document.getElementById("performanceStatusList");
+ const renderPerformanceStatuses=()=>{
+   const ids=[...form.querySelectorAll('[name="performanceIds"]:checked')].map(x=>x.value);
+   statusList.innerHTML=ids.map(pid=>{const p=e.performances.find(x=>x.id===pid);const current=statuses[pid]||a.status||"未応募";return `<div class="performance-status-row"><span><b>${esc(p?.dayName||`公演 ${e.performances.findIndex(x=>x.id===pid)+1}`)}</b><small>${p?date(p.date):""}${p?.venue?`　${esc(p.venue)}`:""}</small></span><select class="input" data-performance-status="${esc(pid)}">${["未応募","応募予定","受付前","受付中","受付終了","応募済み","当選","落選"].map(x=>`<option ${x===current?"selected":""}>${x}</option>`).join("")}</select></div>`}).join("");
+ };
+ form.querySelectorAll('[name="performanceIds"]').forEach(x=>x.addEventListener("change",renderPerformanceStatuses));
+ renderPerformanceStatuses();
+ const method=form.querySelector('[name="method"]');const announcementGroup=form.querySelector(".announcement-group");method.addEventListener("change",()=>announcementGroup.classList.toggle("hidden",method.value!=="抽選"));
+ form.onsubmit=saveApplication
+}
+function saveApplication(ev){
+ ev.preventDefault();
+ const e=events.find(x=>x.id==state.eventId),f=new FormData(ev.target),performanceIds=f.getAll("performanceIds");
+ const performanceStatuses={};
+ ev.target.querySelectorAll("[data-performance-status]").forEach(x=>performanceStatuses[x.dataset.performanceStatus]=x.value);
+ const statusValues=performanceIds.map(pid=>performanceStatuses[pid]).filter(Boolean);
+ const overallStatus=statusValues.length?statusValues.every(x=>x==="当選")?"当選":statusValues.every(x=>x==="落選")?"落選":(statusValues.includes("応募済み")?"応募済み":statusValues[0]):f.get("status");
+ const d={name:String(f.get("name")).trim(),method:f.get("method"),ticketSiteName:String(f.get("ticketSiteName")||"").trim(),start:f.get("start"),end:f.get("end"),announcement:f.get("method")==="抽選"?f.get("announcement"):"",status:overallStatus,quantity:Number(f.get("quantity")||1),payment:String(f.get("payment")||""),memo:String(f.get("memo")||""),performanceIds,performanceStatuses};
+ if(!d.name){alert("名称を入力してください");return}
+ if(!performanceIds.length){alert("対象公演を1件以上選択してください");return}
+ e.applications=e.applications||[];
+ if(state.orderId)Object.assign(e.applications.find(a=>a.id==state.orderId),d);else e.applications.push({id:id(),...d});
+ save(KEY.events,events);state.page="event";render()
+}
 function deleteApplication(eid,aid){if(!confirm("この申込を削除しますか？"))return;const e=events.find(x=>x.id==eid);e.applications=e.applications.filter(a=>a.id!=aid);save(KEY.events,events);render()}
 
 function productsList(){

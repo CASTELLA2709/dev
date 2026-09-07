@@ -1808,3 +1808,32 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
   }
 }
 
+
+.performance-heading{font-size:16px;font-weight:800;line-height:1.4}
+
+/* 申込の対象公演選択 */
+.performance-select-list{display:flex;flex-direction:column;gap:8px}
+.performance-select-list .event-check{margin:0}
+.application-performance{margin:6px 0 8px}
+.application-performance small{font-size:12px;color:#666}
+.performance-status-editor{display:grid;gap:8px;margin-top:8px}.performance-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border,#ddd);border-radius:10px;background:var(--card,#fff)}.performance-status-row>span{display:flex;flex-direction:column;gap:3px}.performance-status-row small{opacity:.7}.performance-status-row .input{max-width:150px}.form-note{display:block;margin-top:5px;font-size:12px;opacity:.7}.performance-result-list{display:grid;gap:5px;margin-top:6px}.performance-result-item{display:flex;justify-content:space-between;align-items:center;gap:8px}.application-table .application-row{grid-template-columns:1.1fr 1.2fr 1.3fr 1.5fr}
+
+/* ===== イベント一覧：申込を名称ごとのカード型＋公演ごとの行で表示 ===== */
+.application-cards{display:grid;gap:10px;margin-top:8px;}
+.application-card{border:1px solid #e1e3e8;border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.application-card-title{padding:9px 11px;background:#f7f8fa;border-bottom:1px solid #e6e7eb;font-size:11px;font-weight:700;color:#333;}
+.application-card .application-table{margin-top:0;border:0;border-radius:0;}
+.application-card .application-row{grid-template-columns:1.15fr 1.35fr .85fr .9fr;}
+.application-card .application-head{background:#fafafa;}
+.application-card .application-row:not(.application-head):first-of-type{border-top:1px solid #eeeeee;}
+@media(max-width:600px){
+  .application-cards{gap:8px;}
+  .application-card-title{padding:8px 9px;font-size:10px;}
+  .application-card .application-row{grid-template-columns:1.1fr 1.3fr .8fr .9fr;gap:4px;padding:8px 6px;font-size:8px;}
+  .application-card .application-head{font-size:7px;}
+  .application-card .application-row .status{font-size:7px;padding:3px 5px;}
+}
+
+/* 公演ごとの結果：公演名を通常サイズに調整 */
+.performance-result-item > span:first-child{font-size:12px;font-weight:600;}
+@media(max-width:600px){.performance-result-item > span:first-child{font-size:10px;}}
