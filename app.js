@@ -399,10 +399,7 @@ function eventDetail(){
  const apps=e.applications||[];
  document.getElementById("screen").innerHTML=`
  <div class="hero">
-   <div class="row">
-     <span class="badge">${esc(e.type)}</span>
-     <button class="secondary" style="width:auto;padding:6px 12px;font-size:8px" onclick="editEvent('${e.id}')">編集</button>
-   </div>
+   <div class="row"><span class="badge">${esc(e.type)}</span></div>
    <h2>${esc(e.name)}</h2>
  </div>
  <div class="card">${detail("イベント名",e.name)}${detail("イベント種別",e.type)}${urlDetail("イベントURL",e.url)}${detail("メモ",e.memo)}</div>
@@ -423,7 +420,7 @@ function eventDetail(){
    </div>
  </div>`).join("")}</div>`:`<div class="empty">このイベントの申込はありません。</div>`}
  <button class="primary" style="margin-top:10px" onclick="addApplication('${e.id}')">＋ このイベントに申込を追加</button>
- <div class="actions"><button class="danger" onclick="deleteEvent('${e.id}')">イベントを削除</button></div>`;
+ <div class="actions"><button class="secondary" onclick="editEvent('${e.id}')">編集</button><button class="danger" onclick="deleteEvent('${e.id}')">イベントを削除</button></div>`;
 }
 
 function editEvent(id){state.eventId=id;state.page="eventForm";render()}
@@ -546,8 +543,7 @@ function productDetail(){
  title("販売詳細",true);
  document.getElementById("screen").innerHTML=`
  <div class="hero">
-   <div class="row"><span class="badge">${esc(p.type||"POP UP")}</span>
-   <button class="secondary" style="width:auto;padding:6px 12px;font-size:8px" onclick="editProduct('${p.id}')">編集</button></div>
+   <div class="row"><span class="badge">${esc(p.type||"POP UP")}</span></div>
    <h2>${esc(p.name)}</h2>
    <div class="sub">${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}</div>
  </div>
@@ -563,7 +559,7 @@ function productDetail(){
    </div>`).join("")}</div>`:
    `<div class="empty">欲しい商品がありません。</div>`}
  <button class="primary" style="margin-top:10px" onclick="addSaleItem('${p.id}')">＋ 欲しい商品を追加</button>
- <div class="actions"><button class="danger" onclick="deleteProduct('${p.id}')">販売情報を削除</button></div>`;
+ <div class="actions"><button class="secondary" onclick="editProduct('${p.id}')">編集</button><button class="danger" onclick="deleteProduct('${p.id}')">販売情報を削除</button></div>`;
 }
 function editProduct(i){
   state.productId=i;
