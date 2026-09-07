@@ -52,7 +52,7 @@ function normalizeSchedule(s){
   return s;
 }
 schedules=schedules.map(normalizeSchedule);
-const state={page:"home",returnPage:"home",eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productDisplayMode:"goods",productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
+const state={page:"home",returnPage:"home",scheduleReturnPage:null,eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productDisplayMode:"goods",productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 // 申込の受付ステータスを日時に応じて自動更新
 // ・受付開始日時を過ぎたら「未応募」「応募予定」「受付前」→「受付中」
@@ -124,6 +124,7 @@ function go(p){
   // フッターから画面を切り替えたときは、各画面を毎回初期表示状態に戻す
   state.page=p;
   state.returnPage=p;
+  state.scheduleReturnPage=null;
   state.eventId=null;
   state.productId=null;
   state.scheduleId=null;
@@ -177,7 +178,15 @@ function goBack(){
   else if(p==="productForm") target=state.productId?"product":target;
   else if(p==="scheduleForm") target=state.scheduleId?"schedule":target;
   else if(p==="saleItemForm") target="product";
-  else if(p==="event") target=state.returnPage||"events";
+  else if(p==="event"){
+    target=state.returnPage||"events";
+    // 予定詳細 → 関連イベント → 戻る の場合は、
+    // 予定詳細に戻ったあと「予定詳細の戻り先」も復元する。
+    if(state.returnPage==="schedule" && state.scheduleReturnPage){
+      state.returnPage=state.scheduleReturnPage;
+      state.scheduleReturnPage=null;
+    }
+  }
   else if(p==="product") target=state.returnPage||"products";
   else if(p==="schedule") target=state.returnPage||"schedules";
   else if(p==="calendar") target="home";
@@ -239,23 +248,58 @@ function home(){
    });
  });
 
- const renderNotifications=(list,emptyText)=>{
-   if(!list.length)return `<div class="notification-empty">${emptyText}</div>`;
-   return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail('${n.kind}','${n.entityId}')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong>${n.kind==="product"&&n.productType?`<span class="badge">${esc(n.productType)}</span>`:""}</div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
+ const renderNotifications=(list)=>{
+   if(!list.length)return "";
+   return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail(\'${n.kind}\',\'${n.entityId}\')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong>${n.kind==="product"&&n.productType?`<span class="badge">${esc(n.productType)}</span>`:""}</div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
+ };
+
+ // 期間中：現在時刻が受付・販売期間内のものを一覧表示
+ const now=new Date();
+ const currentPeriods=[];
+ const addCurrentPeriod=(kind,entityId,name,periodType,start,end,detailText="")=>{
+   if(!start||!end)return;
+   const startDate=new Date(start);
+   const endDate=new Date(end);
+   if(Number.isNaN(startDate.getTime())||Number.isNaN(endDate.getTime()))return;
+   if(now>=startDate && now<=endDate) currentPeriods.push({kind,entityId,name,periodType,start,end,detail:detailText});
+ };
+ events.forEach(e=>(e.applications||[]).forEach(a=>{
+   if(a.start&&a.end)addCurrentPeriod("event",e.id,e.name,a.method||"受付",a.start,a.end,a.name||"");
+ }));
+ products.forEach(p=>{
+   const type=p.type||"POP UP";
+   if(p.start&&p.end)addCurrentPeriod("product",p.id,p.name,`${type}期間`,`${p.start}T00:00:00`,`${p.end}T23:59:59`,p.venue||"");
+ });
+ currentPeriods.sort((a,b)=>new Date(a.end)-new Date(b.end));
+ const periodText=x=>{
+   const s=new Date(x.start),e=new Date(x.end);
+   const sameDay=s.toDateString()===e.toDateString();
+   return sameDay?`${date(x.start.slice(0,10))} ${x.start.includes("T")?x.start.slice(11,16):""} ～ ${x.end.includes("T")?x.end.slice(11,16):""}`:`${date(x.start.slice(0,10))} ～ ${date(x.end.slice(0,10))}`;
+ };
+ const daysUntilEnd=x=>{
+   const endKey=x.end.slice(0,10);
+   const todayKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+   const endDay=new Date(endKey+"T00:00:00");
+   const todayDay=new Date(todayKey+"T00:00:00");
+   return Math.max(0,Math.round((endDay-todayDay)/86400000));
+ };
+ const renderCurrentPeriods=()=>{
+   if(!currentPeriods.length)return `<div class="period-empty">現在、期間中の受付・販売はありません。</div>`;
+   return `<div class="period-list">${currentPeriods.map(x=>{const remaining=daysUntilEnd(x);const remainingText=remaining===0?"本日終了":"あと"+remaining+"日";const typeClass=x.kind==="product"?(x.periodType.includes("受注")?"order":x.periodType.includes("期間")?"sale":"product"):((x.periodType.includes("抽選")||x.periodType.includes("受付"))?"lottery":x.periodType.includes("先着")?"firstcome":"event");return `<div class="period-item period-${typeClass}" onclick="openHomeNotificationDetail('${x.kind}','${x.entityId}')"><div class="period-main"><span class="period-type">${esc(x.periodType)}</span><strong>${esc(x.name)}</strong><span class="period-remaining ${remaining<=1?"urgent":""}">${remainingText}</span></div>${x.detail?`<div class="period-detail">${esc(x.detail)}</div>`:""}<div class="period-date">${esc(periodText(x))}</div></div>`}).join("")}</div>`;
  };
  const dayLabel=offset=>offset===0?"今日":`あと${offset}日`;
  title("ホーム");
  document.getElementById("screen").innerHTML=`
-   <div class="hero"><h2>抽選管理</h2><div class="sub">今後7日間の予定・受付・発表などをまとめて確認</div></div>
-   <div class="section home-notification-title"><h2>通知（7日間）</h2></div>
-   <div class="home-notification-date">${date(days[0].key)} ～ ${date(days[6].key)}</div>
-   ${notifications.map(d=>`
-     <div class="notification-day">
-       <div class="notification-day-title"><strong>${date(d.key)}</strong><span>${dayLabel(d.offset)}</span></div>
-       <div class="notification-section"><h3>◆イベント</h3>${renderNotifications(d.event,"イベントはありません。")}</div>
-       <div class="notification-section"><h3>◆グッズ・販売</h3>${renderNotifications(d.product,"グッズ・販売はありません。")}</div>
-       <div class="notification-section"><h3>◆予定</h3>${renderNotifications(d.schedule,"予定はありません。")}</div>
-     </div>`).join("")}`;
+   <div class="home-hero"><div><div class="home-kicker">TODAY</div><h2>ホーム</h2><div class="sub">期間中の受付・販売と、これから7日間の予定を確認</div></div><div class="home-summary"><span>${currentPeriods.length}<small>期間中</small></span><span>${notifications.reduce((n,d)=>n+d.event.length+d.product.length+d.schedule.length,0)}<small>7日間</small></span></div></div>
+   <div class="section home-period-title"><h2>期間中</h2><div class="home-period-sub">現在受付・販売中</div></div>
+   ${renderCurrentPeriods()}
+   <div class="section home-notification-title"><h2>直近7日</h2><div class="home-period-sub">${date(days[0].key)} ～ ${date(days[6].key)}</div></div>
+   <div class="home-notification-list">${notifications.map(d=>{
+     const total=d.event.length+d.product.length+d.schedule.length;
+     if(!total)return "";
+     return `<div class="notification-day"><div class="notification-day-title"><strong>${date(d.key)}</strong><span>${dayLabel(d.offset)} ・ ${total}件</span></div>${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}</div>`;
+   }).join("")}</div>
+   ${notifications.every(d=>!(d.event.length+d.product.length+d.schedule.length))?`<div class="notification-empty">今後7日間に登録されている予定はありません。</div>`:""}`;
 }
 function applicationStatusSummary(e){
  const apps=e.applications||[];
@@ -275,7 +319,7 @@ function applicationRows(e){
  if(!apps.length)return `<div class="application-empty">申込はありません</div>`;
  return `<div class="application-table"><div class="application-row application-head"><span>名称</span><span>期間</span><span>発表日</span><span>ステータス</span></div>${apps.map(a=>`<div class="application-row"><span class="application-name">${esc(a.name||"申込")}</span><span class="application-period">${a.start||a.end?`<span>${dt(a.start)}</span><span>～ ${dt(a.end)}</span>`:"―"}</span><span>${a.announcement?date(a.announcement):"―"}</span><span class="status status-${statusClass(a.status)}">${esc(a.status||"未応募")}</span></div>`).join("")}</div>`;
 }
-function eventCard(e){return `<div class="item" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　<span class="event-application-label">申込</span> ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full"><span class="summary-label">申込</span>${applicationRows(e)}</div></div>`}
+function eventCard(e){return `<div class="item list-calendar-event" onclick="openEvent('${e.id}')"><div class="row"><h3>${esc(e.name)}</h3><span class="badge">${esc(e.type)}</span></div><p>公演 ${e.performances?.length||0}件　<span class="event-application-label">申込</span> ${(e.applications||[]).length}件</p><div class="application-summary application-summary-full"><span class="summary-label">申込</span>${applicationRows(e)}</div></div>`}
 function eventsList(){
  const f=state.filters.events;
  const filtered=events.filter(e=>(!f.type||e.type===f.type)&&(!f.keyword||[e.name,e.performers].join(" ").toLowerCase().includes(f.keyword.toLowerCase())));
@@ -403,7 +447,7 @@ function productsList(){
  const sectionDefaults={soon:true,comfortable:false,expired:false,general:false,purchased:false,prizePlanned:true,prizeUnsecured:true,prizeUnsecuredLong:false,prizeSecured:false};
  const visibility={...sectionDefaults,...(state.productSections||{})};
  const toggleSection=key=>{state.productSections={...sectionDefaults,...(state.productSections||{})};state.productSections[key]=!state.productSections[key];render()};
- const card=p=>`<div class="item" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?`発売日 ${p.start?date(p.start):"-"}`:`${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}`}</p><p>欲しい商品 ${p.items?.length||0}件</p></div>`;
+ const card=p=>`<div class="item list-calendar-product ${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?"list-calendar-prize":p.type==="受注販売"?"list-calendar-order":p.type==="POP UP"?"list-calendar-popup":"list-calendar-sale"}" onclick="openProduct('${p.id}')"><div class="row"><h3>${esc(p.name)}</h3><div style="display:flex;gap:6px;align-items:center"><span class="badge">${esc(p.type||"POP UP")}</span>${p.purchased?`<span class="status status-done">済</span>`:""}</div></div><p>${["一番くじ","UFOキャッチャー","その他景品"].includes(p.type)?`発売日 ${p.start?date(p.start):"-"}`:`${p.start?date(p.start):"-"} ～ ${p.end?date(p.end):"-"}`}</p><p>欲しい商品 ${p.items?.length||0}件</p></div>`;
  const block=(key,label,items,cls)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block product-list-block ${cls}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleProductSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
  window.toggleProductSection=toggleSection;
  const goodsBlocks=block("soon","期限が一週間以内",soon,"soon-products")+block("comfortable","期限に余裕がある",comfortable,"comfortable-products")+block("expired","期限が過ぎたもの",expired,"expired-products")+block("general","一般販売",general,"general-products")+block("purchased","購入済み",purchased,"purchased-products");
@@ -417,7 +461,7 @@ function wishlistList(){
  const items=[];
  products.forEach(p=>(p.items||[]).forEach((it,index)=>items.push({p,it,index})));
  title("欲しい商品");
- const card=x=>`<div class="item"><div class="row"><div><h3>${esc(x.it.name)}</h3><p style="margin-top:4px">${esc(x.p.name)} <span class="badge">${esc(x.p.type||"")}</span></p></div></div><p>${x.it.price?`¥${Number(x.it.price).toLocaleString()}`:""}${x.it.quantity?`${x.it.price?"　":""}数量：${x.it.quantity}`:""}</p>${x.p.start?`<p>${["一番くじ","UFOキャッチャー","その他景品"].includes(x.p.type)?"発売日":"開始日"}：${date(x.p.start)}</p>`:""}<div class="actions"><button class="secondary" onclick="openProduct('${x.p.id}')">詳細</button><button class="secondary" onclick="editSaleItem('${x.p.id}',${x.index})">編集</button></div></div>`;
+ const card=x=>`<div class="item list-calendar-product ${["一番くじ","UFOキャッチャー","その他景品"].includes(x.p.type)?"list-calendar-prize":x.p.type==="受注販売"?"list-calendar-order":x.p.type==="POP UP"?"list-calendar-popup":"list-calendar-sale"}"><div class="row"><div><h3>${esc(x.it.name)}</h3><p style="margin-top:4px">${esc(x.p.name)} <span class="badge">${esc(x.p.type||"")}</span></p></div></div><p>${x.it.price?`¥${Number(x.it.price).toLocaleString()}`:""}${x.it.quantity?`${x.it.price?"　":""}数量：${x.it.quantity}`:""}</p>${x.p.start?`<p>${["一番くじ","UFOキャッチャー","その他景品"].includes(x.p.type)?"発売日":"開始日"}：${date(x.p.start)}</p>`:""}<div class="actions"><button class="secondary" onclick="openProduct('${x.p.id}')">詳細</button><button class="secondary" onclick="editSaleItem('${x.p.id}',${x.index})">編集</button></div></div>`;
  const block=(label,list)=>list.length?`<div class="event-list-block product-list-block"><div class="section event-list-heading"><h2>${label}</h2><span class="count">${list.length}件</span></div><div class="list">${list.map(card).join("")}</div></div>`:"";
  document.getElementById("screen").innerHTML=`<div class="section list-section"><div><h2>欲しい商品</h2><p class="sub">一番くじ・UFOキャッチャーなどの欲しい景品をまとめて管理できます。</p></div><button class="secondary" style="width:auto" onclick="go('products')">商品一覧</button></div>${block("欲しい商品",items)}${!items.length?`<div class="empty">欲しい商品がありません。販売情報の「欲しい商品」から追加できます。</div>`:""}`;
 }
@@ -597,6 +641,9 @@ function scheduleDetail(){
  <div class="actions"><button class="secondary" onclick="editSchedule('${s.id}')">編集</button><button class="danger" onclick="deleteSchedule('${s.id}')">削除</button></div>`;
 }
 function openLinkedEvent(id){
+ // 予定詳細へ戻ったあと、さらに「戻る」で元の画面へ戻れるように
+ // 予定詳細自身の戻り先を一時保存する。
+ state.scheduleReturnPage=state.returnPage||"schedules";
  state.returnPage="schedule";
  state.eventId=id;
  state.page="event";
