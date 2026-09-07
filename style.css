@@ -1602,9 +1602,9 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 .notification-section h3{font-size:10px;color:#70757d;margin:0 0 5px;font-weight:800}
 .notification-list{gap:5px}
 .notification-item{padding:9px 10px;border-radius:8px;box-shadow:none}
-.notification-main strong{font-size:11px}
+.notification-main strong{font-size:13px}
 .notification-type{font-size:8px;padding:3px 6px}
-.notification-text{font-size:9px;margin-top:4px}
+.notification-text{font-size:11px;margin-top:4px}
 .notification-empty{margin-top:8px}
 @media(max-width:600px){
  .home-hero{padding-bottom:15px}
