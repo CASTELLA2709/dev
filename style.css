@@ -25,7 +25,7 @@ button,input,select,textarea{font:inherit}.app{height:100vh;max-width:540px;marg
 .calendar-legend span{display:flex;align-items:center;gap:4px}
 .legend-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .dot{display:block;margin-top:4px;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dot.cal-event,.legend-dot.cal-event{color:#bdafff;background:#9275ed}
+.dot.cal-event,.legend-dot.cal-event{color:#2478d4;background:#2478d4}
 .dot.cal-application-start,.legend-dot.cal-application-start{color:#8ee0a8;background:#48a868}
 .dot.cal-application-end,.legend-dot.cal-application-end{color:#ff9ca3;background:#d85b68}
 .dot.cal-popup,.legend-dot.cal-popup{color:#ffc47d;background:#d88938}
@@ -35,7 +35,7 @@ button,input,select,textarea{font:inherit}.app{height:100vh;max-width:540px;marg
 
 .dot.cal-schedule,.legend-dot.cal-schedule{color:#b8c0cc;background:#697386}
 .more-dot{display:block;margin-top:3px;font-size:6px;color:#777780}
-.event-group.cal-event{border-left-color:#9275ed}
+.event-group.cal-event{border-left-color:#2478d4}
 .event-group.cal-application-start{border-left-color:#48a868}
 .event-group.cal-application-end{border-left-color:#d85b68}
 .event-group.cal-popup{border-left-color:#d88938}
@@ -386,8 +386,8 @@ html, body {
 
 /* カレンダーの色分けは白背景でも見やすく */
 .dot.cal-event,.legend-dot.cal-event {
-  color: #7057c7;
-  background: #8a70e8;
+  color: #2478d4;
+  background: #2478d4;
 }
 .dot.cal-application-start,.legend-dot.cal-application-start {
   color: #2f8a50;
@@ -418,7 +418,7 @@ html, body {
   background: #e0a72f;
 }
 
-.event-group.cal-event{border-left-color:#8a70e8}
+.event-group.cal-event{border-left-color:#2478d4}
 .event-group.cal-application-start{border-left-color:#48a868}
 .event-group.cal-application-end{border-left-color:#d85b68}
 .event-group.cal-popup{border-left-color:#d88938}
@@ -579,7 +579,7 @@ body {
   background: transparent !important;
   color: #4f5660 !important;
 }
-.dot.cal-event::first-letter { color: #8a70e8; }
+.dot.cal-event::first-letter { color: #2478d4; }
 .dot.cal-application-start::first-letter { color: #48a868; }
 .dot.cal-application-end::first-letter { color: #d85b68; }
 .dot.cal-popup::first-letter { color: #d88938; }
@@ -1390,7 +1390,7 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 }
 
 /* ===== カレンダー：下部予定カードの種別カラーを復元 ===== */
-.calendar-page .event-group.cal-event{border-left-color:#8a70e8 !important}
+.calendar-page .event-group.cal-event{border-left-color:#2478d4 !important}
 .calendar-page .event-group.cal-application-start{border-left-color:#48a868 !important}
 .calendar-page .event-group.cal-application-end{border-left-color:#d85b68 !important}
 .calendar-page .event-group.cal-announcement{border-left-color:#c69a2b !important}
@@ -1649,13 +1649,13 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 .home-period-title::before{display:none}
 
 /* 一覧画面のカード色をカレンダーと統一 */
-.list-calendar-event::before { background:#8a70e8 !important; }
+.list-calendar-event::before { background:#2478d4 !important; }
 .list-calendar-product::before { background:#697386 !important; }
 .list-calendar-popup::before { background:#d88938 !important; }
 .list-calendar-order::before { background:#d85b8c !important; }
 .list-calendar-prize::before { background:#e0a72f !important; }
 .list-calendar-sale::before { background:#697386 !important; }
-.list-calendar-event { border-color:#d9d1f5; }
+.list-calendar-event { border-color:#b9d5f2; }
 .list-calendar-popup { border-color:#f0d4b9; }
 .list-calendar-order { border-color:#f0cedf; }
 .list-calendar-prize { border-color:#ead8a5; }
@@ -1837,3 +1837,35 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 /* 公演ごとの結果：公演名を通常サイズに調整 */
 .performance-result-item > span:first-child{font-size:12px;font-weight:600;}
 @media(max-width:600px){.performance-result-item > span:first-child{font-size:10px;}}
+
+
+/* 一覧画面：見出しアクセントラインを各カテゴリのカラーに統一 */
+.list-section-events h2::before { background: #2478d4; }
+.list-section-products h2::before { background: #d88938; }
+.list-section-schedules h2::before { background: #697386; }
+
+/* ===== 一覧内の各セクション見出し：カテゴリごとのアクセントカラー ===== */
+/* イベント */
+.event-list-block.current-events .event-list-heading h2::before,
+.event-list-block.future-events .event-list-heading h2::before,
+.event-list-block.past-events .event-list-heading h2::before {
+  background: #2478d4;
+}
+
+/* グッズ・販売／景品 */
+.product-list-block .event-list-heading h2::before {
+  background: #d88938;
+}
+
+/* 予定 */
+.schedule-list-block .event-list-heading h2::before {
+  background: #697386;
+}
+.schedule-past-month-group .past-month-heading {
+  border-left-color: #697386;
+}
+
+/* イベントの過去月見出しもイベントカラー */
+.past-events .past-month-heading {
+  border-left-color: #2478d4;
+}
