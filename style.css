@@ -1797,3 +1797,14 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
   .notification-today-count{font-size:12px}
   .notification-today-empty{font-size:13px;padding:13px}
 }
+
+/* ===== ホーム：直近7日の「イベント・グッズ・販売・予定」ラベルを本日と同じサイズに統一 ===== */
+.notification-day .notification-section h3{
+  font-size:10px;
+}
+@media(max-width:600px){
+  .notification-day .notification-section h3{
+    font-size:10px;
+  }
+}
+
