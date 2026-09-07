@@ -52,7 +52,7 @@ function normalizeSchedule(s){
   return s;
 }
 schedules=schedules.map(normalizeSchedule);
-const state={page:"home",returnPage:"home",scheduleReturnPage:null,eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},productDisplayMode:"goods",productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
+const state={page:"home",returnPage:"home",scheduleReturnPage:null,eventId:null,productId:null,scheduleId:null,orderId:null,saleItemIndex:null,calendarDate:new Date(),selectedDate:new Date(),calendarView:"month",filters:{events:{type:"",keyword:""},products:{type:"",keyword:""},schedules:{type:"",keyword:""}},scheduleSections:{current:true,future:false,past:false},schedulePastMonths:{},eventPastMonths:{},productDisplayMode:"goods",productSections:{soon:true,comfortable:false,expired:false,general:false,purchased:false},calendarFilters:{event:true,applicationStart:true,applicationEnd:true,announcement:true,popup:true,order:true,prize:true,schedule:true},calendarFilterOpen:false};
 function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 // 申込の受付ステータスを日時に応じて自動更新
 // ・受付開始日時を過ぎたら「未応募」「応募予定」「受付前」→「受付中」
@@ -250,7 +250,7 @@ function home(){
 
  const renderNotifications=(list)=>{
    if(!list.length)return "";
-   return `<div class="notification-list">${list.map(n=>`<div class="notification-item" ${n.entityId?`onclick="openHomeNotificationDetail(\'${n.kind}\',\'${n.entityId}\')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong>${n.kind==="product"&&n.productType?`<span class="badge">${esc(n.productType)}</span>`:""}</div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`).join("")}</div>`;
+   return `<div class="notification-list">${list.map(n=>{const colorClass=n.kind==="product"?(n.productType==="受注販売"?"notification-order":(["一番くじ","UFOキャッチャー","その他景品"].includes(n.productType)?"notification-prize":"notification-popup")):n.kind==="schedule"?"notification-schedule":"notification-event";return `<div class="notification-item ${colorClass}" ${n.entityId?`onclick="openHomeNotificationDetail(\'${n.kind}\',\'${n.entityId}\')"`:""}><div class="notification-main"><span class="notification-type">${esc(n.type)}</span><strong>${esc(n.name)}</strong>${n.kind==="product"&&n.productType?`<span class="badge">${esc(n.productType)}</span>`:""}</div><div class="notification-text">${esc(n.text)}${n.detail?`　${esc(n.detail)}`:""}</div></div>`}).join("")}</div>`;
  };
 
  // 期間中：現在時刻が受付・販売期間内のものを一覧表示
@@ -294,11 +294,21 @@ function home(){
    <div class="section home-period-title"><h2>期間中</h2><div class="home-period-sub">現在受付・販売中</div></div>
    ${renderCurrentPeriods()}
    <div class="section home-notification-title"><h2>直近7日</h2><div class="home-period-sub">${date(days[0].key)} ～ ${date(days[6].key)}</div></div>
-   <div class="home-notification-list">${notifications.map(d=>{
-     const total=d.event.length+d.product.length+d.schedule.length;
-     if(!total)return "";
-     return `<div class="notification-day"><div class="notification-day-title"><strong>${date(d.key)}</strong><span>${dayLabel(d.offset)} ・ ${total}件</span></div>${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}</div>`;
-   }).join("")}</div>
+   <div class="home-notification-list">
+     ${(()=>{
+       const d=notifications[0];
+       const total=d.event.length+d.product.length+d.schedule.length;
+       return `<div class="notification-today">
+         <div class="notification-today-title"><span class="notification-today-badge">本日</span><strong>${date(d.key)}</strong><span class="notification-today-count">${total}件</span></div>
+         ${total?`${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}`:`<div class="notification-today-empty">本日の予定はありません。</div>`}
+       </div>`;
+     })()}
+     ${notifications.slice(1).map(d=>{
+       const total=d.event.length+d.product.length+d.schedule.length;
+       if(!total)return "";
+       return `<div class="notification-day"><div class="notification-day-title"><strong>${date(d.key)}</strong><span>${dayLabel(d.offset)} ・ ${total}件</span></div>${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}</div>`;
+     }).join("")}
+   </div>
    ${notifications.every(d=>!(d.event.length+d.product.length+d.schedule.length))?`<div class="notification-empty">今後7日間に登録されている予定はありません。</div>`:""}`;
 }
 function applicationStatusSummary(e){
@@ -327,43 +337,23 @@ function eventsList(){
  const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
  const getPerformanceDates=e=>(e.performances||[]).map(p=>p.date).filter(Boolean).map(d=>{const x=new Date(d+"T00:00:00");x.setHours(0,0,0,0);return x;});
  const current=[],future=[],past=[];
- filtered.forEach(e=>{
-   const dates=getPerformanceDates(e);
-   const hasCurrent=dates.some(d=>d>=today&&d<nextMonthStart);
-   const hasFuture=dates.some(d=>d>=nextMonthStart);
-   if(hasCurrent) current.push(e);
-   else if(hasFuture) future.push(e);
-   else past.push(e);
- });
+ filtered.forEach(e=>{const dates=getPerformanceDates(e);const hasCurrent=dates.some(d=>d>=today&&d<nextMonthStart);const hasFuture=dates.some(d=>d>=nextMonthStart);if(hasCurrent)current.push(e);else if(hasFuture)future.push(e);else past.push(e)});
  const nearestDate=e=>{const dates=getPerformanceDates(e);return dates.length?Math.min(...dates.map(d=>Math.abs(d-today))):Infinity};
- current.sort((a,b)=>nearestDate(a)-nearestDate(b));
- future.sort((a,b)=>nearestDate(a)-nearestDate(b));
- past.sort((a,b)=>nearestDate(a)-nearestDate(b));
+ current.sort((a,b)=>nearestDate(a)-nearestDate(b));future.sort((a,b)=>nearestDate(a)-nearestDate(b));past.sort((a,b)=>nearestDate(a)-nearestDate(b));
+ const pastMonthKey=e=>{const dates=getPerformanceDates(e).sort((a,b)=>a-b);const d=dates[dates.length-1];return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:"unknown"};
+ const pastGroups={};past.forEach(e=>{const k=pastMonthKey(e);(pastGroups[k]||(pastGroups[k]=[])).push(e)});
+ const monthLabel=k=>{if(k==="unknown")return "日付未設定";const [yy,mm]=k.split("-");return `${yy}年${Number(mm)}月`};
  title("イベント一覧");
-
+ const eventPastMonths=state.eventPastMonths||{};
+ const toggleEventPastMonth=k=>{state.eventPastMonths=state.eventPastMonths||{};state.eventPastMonths[k]=state.eventPastMonths[k]!==true;render()};
+ window.toggleEventPastMonth=toggleEventPastMonth;
  const visibility=state.eventSections||{current:true,future:false,past:false};
- const toggleSection=key=>{
-   state.eventSections=state.eventSections||{current:true,future:false,past:false};
-   state.eventSections[key]=!state.eventSections[key];
-   render();
- };
- const block=(key,label,list,cls)=>{
-   if(!list.length)return "";
-   const open=visibility[key]!==false;
-   return `<div class="event-list-block ${cls}">
-     <div class="section event-list-heading">
-       <h2>${label}</h2>
-       <div class="section-actions">
-         <span class="count">${list.length}件</span>
-         <button class="section-toggle ${open?"open":""}" onclick="toggleEventSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button>
-       </div>
-     </div>
-     ${open?`<div class="list">${list.map(eventCard).join("")}</div>`:""}
-   </div>`;
- };
+ const toggleSection=key=>{state.eventSections=state.eventSections||{current:true,future:false,past:false};state.eventSections[key]=!state.eventSections[key];render()};
+ const block=(key,label,list,cls)=>{if(!list.length)return "";const open=visibility[key]!==false;let content="";if(open){if(key==="past")content=Object.keys(pastGroups).sort((a,b)=>b.localeCompare(a)).map(k=>{const monthOpen=eventPastMonths[k]===true;return `<div class="past-month-group"><button type="button" class="past-month-heading ${monthOpen?"open":""}" onclick="toggleEventPastMonth('${k}')" aria-expanded="${monthOpen}"><strong>${monthLabel(k)}</strong><span class="count">${pastGroups[k].length}件</span><span class="past-month-toggle">${monthOpen?"−":"＋"}</span></button>${monthOpen?`<div class="list">${pastGroups[k].map(eventCard).join("")}</div>`:""}</div>`}).join("");else content=`<div class="list">${list.map(eventCard).join("")}</div>`}return `<div class="event-list-block ${cls}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleEventSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${content}</div>`};
  window.toggleEventSection=toggleSection;
  document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>イベント</h2><div class="section-actions"><span class="count">${filtered.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('events')">☰ 絞り込み</button></div></div>${block("current","今月の予定",current,"current-events")}${block("future","来月以降の予定",future,"future-events")}${block("past","過去の予定",past,"past-events")}${!filtered.length?`<div class="empty">${events.length?"条件に一致するイベントがありません。":"イベントがありません。"}</div>`:""}`;
 }
+
 function eventDetail(){
  const e=events.find(x=>x.id==state.eventId);
  if(!e){go("events");return}
@@ -609,8 +599,13 @@ function scheduleList(){
  const visibility=state.scheduleSections||{current:true,future:false,past:false};
  const toggleScheduleSection=key=>{state.scheduleSections=state.scheduleSections||{current:true,future:false,past:false};state.scheduleSections[key]=!state.scheduleSections[key];render()};
  window.toggleScheduleSection=toggleScheduleSection;
- const card=s=>{const cls=s.type==="イベント関連"?"schedule-event":s.type==="商品関連"?"schedule-product":s.type==="申込関連"?"schedule-order":"schedule-other";const time=[s.meetingTime?`集合 ${s.meetingTime}`:"",s.startTime?`開始 ${s.startTime}`:""].filter(Boolean).join(" / ");const d=s.date||String(s.start||"").slice(0,10),ed=s.endDate||d;const linked=(s.eventIds||[]).map(id=>events.find(e=>e.id==id)).filter(Boolean);return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${date(d)}${ed!==d?` ～ ${date(ed)}`:""}${time?`　${esc(time)}`:""}</p>${linked.length?`<p class="linked-label">イベント：${linked.map(e=>esc(e.name)).join("、")}</p>`:""}</div>`};
- const block=(key,label,items)=>{if(!items.length)return "";const open=visibility[key]!==false;return `<div class="event-list-block schedule-list-block ${key}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleScheduleSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${open?`<div class="list">${items.map(card).join("")}</div>`:""}</div>`};
+ const scheduleMonthLabel=k=>{if(k==="unknown")return "日付未設定";const [yy,mm]=k.split("-");return `${yy}年${Number(mm)}月`};
+ const schedulePastGroups={};past.forEach(s=>{const d=getDate(s);const k=d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:"unknown";(schedulePastGroups[k]||(schedulePastGroups[k]=[])).push(s)});
+ const schedulePastMonths=state.schedulePastMonths||{};
+ const toggleSchedulePastMonth=k=>{state.schedulePastMonths=state.schedulePastMonths||{};state.schedulePastMonths[k]=state.schedulePastMonths[k]!==true;render()};
+ window.toggleSchedulePastMonth=toggleSchedulePastMonth;
+ const card=s=>{const cls="schedule-calendar-color";const time=[s.meetingTime?`集合 ${s.meetingTime}`:"",s.startTime?`開始 ${s.startTime}`:""].filter(Boolean).join(" / ");const d=s.date||String(s.start||"").slice(0,10),ed=s.endDate||d;const linked=(s.eventIds||[]).map(id=>events.find(e=>e.id==id)).filter(Boolean);return `<div class="item schedule-item ${cls}" onclick="openSchedule('${s.id}')"><div class="row"><h3>${esc(s.name)}</h3><span class="badge">${esc(s.type)}</span></div><p>${date(d)}${ed!==d?` ～ ${date(ed)}`:""}${time?`　${esc(time)}`:""}</p>${linked.length?`<p class="linked-label">イベント：${linked.map(e=>esc(e.name)).join("、")}</p>`:""}</div>`};
+ const block=(key,label,items)=>{if(!items.length)return "";const open=visibility[key]!==false;let content="";if(open){if(key==="past")content=Object.keys(schedulePastGroups).sort((a,b)=>b.localeCompare(a)).map(k=>{const monthOpen=schedulePastMonths[k]===true;const monthItems=schedulePastGroups[k].slice().sort(sortByDate);return `<div class="past-month-group schedule-past-month-group"><button type="button" class="past-month-heading ${monthOpen?"open":""}" onclick="toggleSchedulePastMonth('${k}')" aria-expanded="${monthOpen}"><strong>${scheduleMonthLabel(k)}</strong><span class="count">${monthItems.length}件</span><span class="past-month-toggle">${monthOpen?"−":"＋"}</span></button>${monthOpen?`<div class="list">${monthItems.map(card).join("")}</div>`:""}</div>`}).join("");else content=`<div class="list">${items.map(card).join("")}</div>`}return `<div class="event-list-block schedule-list-block ${key}"><div class="section event-list-heading"><h2>${label}</h2><div class="section-actions"><span class="count">${items.length}件</span><button class="section-toggle ${open?"open":""}" onclick="toggleScheduleSection('${key}')" aria-label="${open?"一覧を閉じる":"一覧を表示"}">${open?"−":"＋"}</button></div></div>${content}</div>`};
  document.getElementById("screen").innerHTML=`<div class="section list-section"><h2>予定</h2><div class="section-actions"><span class="count">${list.length}件</span><button class="filter-button ${f.type||f.keyword?"active":""}" onclick="openFilter('schedules')">☰ 絞り込み</button></div></div>${block("current","今月の予定",current)}${block("future","来月以降の予定",future)}${block("past","過去の予定",past)}${!list.length?`<div class="empty">${schedules.length?"条件に一致する予定がありません。":"予定がありません。"}</div>`:""}`;
 }
 function openFilter(kind){const f=state.filters[kind];const configs={events:{title:"イベントの絞り込み",label:"イベント種別",options:["ライブ","舞台","イベント","その他"],placeholder:"イベント名・出演者を検索"},products:{title:"販売情報の絞り込み",label:"販売種別",options:["POP UP","受注販売","通常販売","一番くじ","UFOキャッチャー","その他景品"],placeholder:"販売名・会場を検索"},schedules:{title:"予定の絞り込み",label:"予定種別",options:["一般予定","仕事","旅行","イベント","ライブ","舞台","映画","スポーツ","食事","買い物","記念日","その他"],placeholder:"予定名・関連情報を検索"}}[kind];const old=document.getElementById("filterModal");if(old)old.remove();const div=document.createElement("div");div.id="filterModal";div.className="overlay";div.innerHTML=`<div class="sheet filter-sheet"><button class="close" onclick="closeFilter()">×</button><h2>${configs.title}</h2><div class="group"><label>${configs.label}</label><select class="input" id="filterType"><option value="">すべて</option>${configs.options.map(x=>`<option ${f.type===x?"selected":""}>${x}</option>`).join("")}</select></div><div class="group"><label>キーワード</label><input class="input" id="filterKeyword" placeholder="${configs.placeholder}" value="${esc(f.keyword)}"></div><div class="filter-actions"><button class="secondary" onclick="clearFilter('${kind}')">クリア</button><button class="primary" onclick="applyFilter('${kind}')">この条件で絞り込む</button></div></div>`;document.body.appendChild(div)}

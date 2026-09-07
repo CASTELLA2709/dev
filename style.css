@@ -1660,3 +1660,140 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 .list-calendar-order { border-color:#f0cedf; }
 .list-calendar-prize { border-color:#ead8a5; }
 .list-calendar-sale { border-color:#e1e4e8; }
+
+/* ===== 予定一覧：カレンダーの「予定」カラーに統一 ===== */
+.schedule-item.schedule-calendar-color{position:relative;border-left:5px solid #697386 !important;background:#fff}
+.schedule-item.schedule-calendar-color::before{display:none !important}
+.schedule-item.schedule-calendar-color .badge{color:#566174;border-color:#d5d9e0;background:#f1f3f5}
+
+/* ===== 過去一覧：年月ごとのグループ ===== */
+.past-month-group{margin:0 0 18px}
+.past-month-heading{display:flex;align-items:center;justify-content:space-between;margin:0 2px 8px;padding:7px 10px;border-left:3px solid #697386;border-bottom:1px solid #e5e7eb;color:#555b63;background:#fafbfc;border-radius:0 7px 7px 0}
+.past-month-heading strong{font-size:14px}
+.past-month-heading .count{font-size:9px;color:#8a9099}
+.past-month-group .list{gap:8px}
+.past-events .past-month-heading{border-left-color:#8a70e8}
+.past-events .past-month-heading strong{color:#7057c7}
+
+/* 過去予定：年月ごとの折りたたみ */
+.past-month-heading{width:100%;font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;border-left:3px solid #697386;border-bottom:1px solid #e5e7eb;color:#555b63;background:#fafbfc;border-radius:0 7px 7px 0;padding:7px 10px;margin:0 2px 8px;box-sizing:border-box}
+.past-month-heading strong{flex:1;font-size:14px}
+.past-month-heading .count{font-size:9px;color:#8a9099}
+.past-month-toggle{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;border-radius:50%}
+.past-month-heading.open .past-month-toggle{font-weight:600}
+.past-month-heading:hover{filter:brightness(.98)}
+.past-month-group .list{gap:8px}
+
+/* ホーム：直近7日のイベントはカレンダーと同じ色 */
+.notification-item.notification-event .notification-type{background:#f0ecff;color:#7057c7;border-color:#d8cffb;}
+
+/* ホーム：直近7日の色をカレンダーと統一 */
+.notification-item.notification-schedule {
+}
+.notification-item.notification-schedule .notification-type {
+  background: #f0f2f5;
+  color: #566174;
+  border-color: #d8dce2;
+}
+.notification-item.notification-schedule:hover {
+  border-color: #cfd4db;
+  border-left-color: #697386;
+}
+
+.notification-item.notification-popup {
+}
+.notification-item.notification-popup .notification-type {
+  background: #fff4e8;
+  color: #b56d20;
+  border-color: #f2d4b2;
+}
+.notification-item.notification-popup:hover {
+  border-color: #efd9c0;
+  border-left-color: #d88938;
+}
+
+.notification-item.notification-order {
+}
+.notification-item.notification-order .notification-type {
+  background: #fff0f6;
+  color: #bd4779;
+  border-color: #f1c8db;
+}
+.notification-item.notification-order:hover {
+  border-color: #ebcadb;
+  border-left-color: #d85b8c;
+}
+
+.notification-item.notification-prize {
+}
+.notification-item.notification-prize .notification-type {
+  background: #fff8df;
+  color: #9a6b00;
+  border-color: #eedb9d;
+}
+.notification-item.notification-prize:hover {
+  border-color: #ead9a8;
+  border-left-color: #e0a72f;
+}
+
+/* ホーム：直近7日の「本日」を独立セクションとして強調 */
+.notification-today{
+  margin:0 0 20px;
+  padding:10px 12px 12px;
+  border:2px solid #9bbcff;
+  border-radius:12px;
+  background:#f4f7ff;
+  box-sizing:border-box;
+}
+.notification-today-title{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin:0 1px 10px;
+}
+.notification-today-title strong{
+  font-size:15px;
+  color:#22355f;
+  font-weight:800;
+}
+.notification-today-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:58px;
+  padding:5px 11px;
+  border-radius:999px;
+  background:#4f86ee;
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  line-height:1;
+}
+.notification-today-count{
+  margin-left:auto;
+  font-size:11px;
+  font-weight:700;
+  color:#52627f;
+  background:#e8efff;
+  border-radius:999px;
+  padding:4px 8px;
+}
+.notification-today .notification-section{margin-bottom:10px}
+.notification-today .notification-section:last-child{margin-bottom:0}
+.notification-today-empty{
+  background:#fff;
+  border:1px solid #dce5f7;
+  border-radius:9px;
+  padding:12px;
+  color:#71809a;
+  font-size:12px;
+  text-align:center;
+}
+@media(max-width:600px){
+  .notification-today{padding:11px 12px 13px;border-radius:13px}
+  .notification-today-title{margin-bottom:10px}
+  .notification-today-badge{min-width:60px;font-size:13px;padding:6px 12px}
+  .notification-today-title strong{font-size:16px}
+  .notification-today-count{font-size:12px}
+  .notification-today-empty{font-size:13px;padding:13px}
+}
