@@ -1593,7 +1593,7 @@ html, body, .app, #screen, .sheet { overscroll-behavior: none; }
 .period-detail{font-size:10px}
 .period-date{font-size:11px;color:#555;margin-top:6px}
 .home-notification-list{display:flex;flex-direction:column;gap:10px}
-.notification-day{background:#fff;border:1px solid #e1e4e8;border-radius:11px;padding:11px 12px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.notification-day{background:#fff;border:1px solid #dfe3e8;border-radius:12px;padding:11px 12px 12px;box-shadow:0 1px 3px rgba(50,60,90,.05);box-sizing:border-box}
 .notification-day-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:8px;margin-bottom:7px;border-bottom:1px solid #eef0f2}
 .notification-day-title strong{font-size:14px;color:#25292e}
 .notification-day-title span{font-size:10px;color:#7a8088;white-space:nowrap}

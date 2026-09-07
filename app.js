@@ -88,6 +88,7 @@ function updateApplicationStatuses(){
 
 function id(){return Date.now()+Math.random().toString(16).slice(2)}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function date(v){if(!v)return"-";const d=new Date(v+"T00:00:00");return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`}
+function homeDate(v){if(!v)return"-";const d=new Date(v+"T00:00:00");const w=["日","月","火","水","木","金","土"];return `${d.getMonth()+1}月${d.getDate()}日（${w[d.getDay()]}）`;}
 function localDateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function dt(v){return v?v.replace("T"," "):"-"}
 function detail(k,v){return `<div class="detail"><span>${esc(k)}</span><b>${esc(v||"-")}</b></div>`}
@@ -274,7 +275,7 @@ function home(){
  const periodText=x=>{
    const s=new Date(x.start),e=new Date(x.end);
    const sameDay=s.toDateString()===e.toDateString();
-   return sameDay?`${date(x.start.slice(0,10))} ${x.start.includes("T")?x.start.slice(11,16):""} ～ ${x.end.includes("T")?x.end.slice(11,16):""}`:`${date(x.start.slice(0,10))} ～ ${date(x.end.slice(0,10))}`;
+   return sameDay?`${homeDate(x.start.slice(0,10))} ${x.start.includes("T")?x.start.slice(11,16):""} ～ ${x.end.includes("T")?x.end.slice(11,16):""}`:`${homeDate(x.start.slice(0,10))} ～ ${homeDate(x.end.slice(0,10))}`;
  };
  const daysUntilEnd=x=>{
    const endKey=x.end.slice(0,10);
@@ -293,20 +294,20 @@ function home(){
    <div class="home-hero"><div><div class="home-kicker">TODAY</div><h2>ホーム</h2><div class="sub">期間中の受付・販売と、これから7日間の予定を確認</div></div><div class="home-summary"><span>${currentPeriods.length}<small>期間中</small></span><span>${notifications.reduce((n,d)=>n+d.event.length+d.product.length+d.schedule.length,0)}<small>7日間</small></span></div></div>
    <div class="section home-period-title"><h2>期間中</h2><div class="home-period-sub">現在受付・販売中</div></div>
    ${renderCurrentPeriods()}
-   <div class="section home-notification-title"><h2>直近7日</h2><div class="home-period-sub">${date(days[0].key)} ～ ${date(days[6].key)}</div></div>
+   <div class="section home-notification-title"><h2>直近7日</h2><div class="home-period-sub">${homeDate(days[0].key)} ～ ${homeDate(days[6].key)}</div></div>
    <div class="home-notification-list">
      ${(()=>{
        const d=notifications[0];
        const total=d.event.length+d.product.length+d.schedule.length;
        return `<div class="notification-today">
-         <div class="notification-today-title"><span class="notification-today-badge">本日</span><strong>${date(d.key)}</strong><span class="notification-today-count">${total}件</span></div>
+         <div class="notification-today-title"><span class="notification-today-badge">本日</span><strong>${homeDate(d.key)}</strong><span class="notification-today-count">${total}件</span></div>
          ${total?`${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}`:`<div class="notification-today-empty">本日の予定はありません。</div>`}
        </div>`;
      })()}
      ${notifications.slice(1).map(d=>{
        const total=d.event.length+d.product.length+d.schedule.length;
        if(!total)return "";
-       return `<div class="notification-day"><div class="notification-day-title"><strong>${date(d.key)}</strong><span>${dayLabel(d.offset)} ・ ${total}件</span></div>${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}</div>`;
+       return `<div class="notification-day"><div class="notification-day-title"><strong>${homeDate(d.key)}</strong><span>${dayLabel(d.offset)} ・ ${total}件</span></div>${d.event.length?`<div class="notification-section"><h3>イベント</h3>${renderNotifications(d.event)}</div>`:""}${d.product.length?`<div class="notification-section"><h3>グッズ・販売</h3>${renderNotifications(d.product)}</div>`:""}${d.schedule.length?`<div class="notification-section"><h3>予定</h3>${renderNotifications(d.schedule)}</div>`:""}</div>`;
      }).join("")}
    </div>
    ${notifications.every(d=>!(d.event.length+d.product.length+d.schedule.length))?`<div class="notification-empty">今後7日間に登録されている予定はありません。</div>`:""}`;
