@@ -13,8 +13,10 @@ function lockPortraitOrientation(){
 
 window.addEventListener("load", lockPortraitOrientation);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) lockPortraitOrientation(); });
-const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1"};
+const KEY={events:"event_parent_v1",products:"product_v1",schedules:"schedule_v1",settings:"app_settings_v1"};
 let events=load(KEY.events,[]),products=load(KEY.products,[]),schedules=load(KEY.schedules,[]);
+let appSettings=load(KEY.settings,{prizePeriods:{"一番くじ":30,"UFOキャッチャー":14,"その他景品":30}});
+appSettings.prizePeriods=Object.assign({"一番くじ":30,"UFOキャッチャー":14,"その他景品":30},appSettings.prizePeriods||{});
 // イベントの公演日ごとの情報を正規化。旧形式の出演者は公演1へ移行する。
 function normalizeEvent(e){
   e=e||{};
@@ -148,7 +150,7 @@ function nav(){
     add.classList.toggle("hidden", hideAdd);
   }
 }
-function render(){nav();switch(state.page){case"home":home();break;case"calendar":calendar();break;case"events":eventsList();break;case"event":eventDetail();break;case"eventForm":eventForm();break;case"products":productsList();break;case"wishlist":wishlistList();break;case"product":productDetail();break;case"productForm":productForm();break;case"schedules":scheduleList();break;case"schedule":scheduleDetail();break;case"scheduleForm":scheduleForm();break;case"orderForm":orderForm();break;case"saleItemForm":saleItemForm();break}}
+function render(){nav();switch(state.page){case"home":home();break;case"calendar":calendar();break;case"events":eventsList();break;case"event":eventDetail();break;case"eventForm":eventForm();break;case"products":productsList();break;case"wishlist":wishlistList();break;case"product":productDetail();break;case"productForm":productForm();break;case"schedules":scheduleList();break;case"schedule":scheduleDetail();break;case"scheduleForm":scheduleForm();break;case"orderForm":orderForm();break;case"saleItemForm":saleItemForm();break;case"settings":settingsPage();break;case"settingsDisplay":settingsDisplayPage();break;case"settingsData":settingsDataPage();break}}
 function go(p){
   // フッターから画面を切り替えたときは、各画面を毎回初期表示状態に戻す
   state.page=p;
@@ -219,6 +221,8 @@ function goBack(){
   else if(p==="product") target=state.returnPage||"products";
   else if(p==="schedule") target=state.returnPage||"schedules";
   else if(p==="calendar") target="home";
+  else if(p==="settingsDisplay"||p==="settingsData") target="settings";
+  else if(p==="settings") target=state.returnPage||"home";
   state.page=target;
   render();
 }
@@ -297,9 +301,23 @@ function home(){
  }));
  products.forEach(p=>{
    const type=p.type||"POP UP";
-   if(p.start&&p.end)addCurrentPeriod("product",p.id,p.name,`${type}期間`,`${p.start}T00:00:00`,`${p.end}T23:59:59`,p.venue||"");
+   if(["一番くじ","UFOキャッチャー","その他景品"].includes(type)){
+     if(p.start){
+       const days=Math.max(1,Number(appSettings.prizePeriods[type]||30));
+       const startDate=new Date(`${p.start}T00:00:00`);
+       const endDate=new Date(startDate);
+       endDate.setDate(endDate.getDate()+days-1);
+       const endKey=localDateKey(endDate);
+       addCurrentPeriod("product",p.id,p.name,`${type}期間`,`${p.start}T00:00:00`,`${endKey}T23:59:59`,p.venue||"");
+     }
+   }else if(p.start&&p.end)addCurrentPeriod("product",p.id,p.name,`${type}期間`,`${p.start}T00:00:00`,`${p.end}T23:59:59`,p.venue||"");
  });
- currentPeriods.sort((a,b)=>new Date(a.end)-new Date(b.end));
+ currentPeriods.sort((a,b)=>{
+   const aPrize=a.kind==="product"&&["一番くじ","UFOキャッチャー","その他景品"].includes((a.periodType||"").replace("期間",""));
+   const bPrize=b.kind==="product"&&["一番くじ","UFOキャッチャー","その他景品"].includes((b.periodType||"").replace("期間",""));
+   if(aPrize!==bPrize)return aPrize?1:-1;
+   return new Date(a.end)-new Date(b.end);
+ });
  const periodText=x=>{
    const s=new Date(x.start),e=new Date(x.end);
    const sameDay=s.toDateString()===e.toDateString();
@@ -314,7 +332,7 @@ function home(){
  };
  const renderCurrentPeriods=()=>{
    if(!currentPeriods.length)return `<div class="period-empty">現在、期間中の受付・販売はありません。</div>`;
-   return `<div class="period-list">${currentPeriods.map(x=>{const remaining=daysUntilEnd(x);const remainingText=remaining===0?"本日終了":"あと"+remaining+"日";const typeClass=x.kind==="product"?(x.periodType.includes("受注")?"order":x.periodType.includes("期間")?"sale":"product"):((x.periodType.includes("抽選")||x.periodType.includes("受付"))?"lottery":x.periodType.includes("先着")?"firstcome":"event");return `<div class="period-item period-${typeClass}" onclick="openHomeNotificationDetail('${x.kind}','${x.entityId}')"><div class="period-main"><span class="period-type">${esc(x.periodType)}</span><strong>${esc(x.name)}</strong><span class="period-remaining ${remaining<=1?"urgent":""}">${remainingText}</span></div>${x.detail?`<div class="period-detail">${esc(x.detail)}</div>`:""}<div class="period-date">${esc(periodText(x))}</div></div>`}).join("")}</div>`;
+   return `<div class="period-list">${currentPeriods.map(x=>{const remaining=daysUntilEnd(x);const isPrizePeriod=x.kind==="product"&&["一番くじ","UFOキャッチャー","その他景品"].some(t=>x.periodType.startsWith(t));const remainingText=isPrizePeriod?"発売中":(remaining===0?"本日終了":"あと"+remaining+"日");const typeClass=x.kind==="product"?(x.periodType.includes("受注")?"order":x.periodType.includes("期間")?"sale":"product"):((x.periodType.includes("抽選")||x.periodType.includes("受付"))?"lottery":x.periodType.includes("先着")?"firstcome":"event");return `<div class="period-item period-${typeClass}" onclick="openHomeNotificationDetail('${x.kind}','${x.entityId}')"><div class="period-main"><span class="period-type">${esc(x.periodType)}</span><strong>${esc(x.name)}</strong><span class="period-remaining ${!isPrizePeriod&&remaining<=1?"urgent":""}">${remainingText}</span></div>${x.detail?`<div class="period-detail">${esc(x.detail)}</div>`:""}<div class="period-date">${esc(periodText(x))}</div></div>`}).join("")}</div>`;
  };
  const dayLabel=offset=>offset===0?"今日":`あと${offset}日`;
  title("ホーム");
@@ -930,6 +948,84 @@ function scheduleTypeIcon(type){
  return icons[type]||icons["その他"];
 }
 
+function settingsPage(){
+  title("設定",true);
+  document.getElementById("screen").innerHTML=`
+    <div class="section settings-page settings-menu-page">
+      <button class="settings-menu-card" type="button" onclick="openSettingsSection('display')">
+        <span class="settings-menu-icon"><svg viewBox="0 0 40 40" aria-hidden="true"><path class="settings-gear" fill-rule="evenodd" d="M 15.03,7.99 L 15.34,2.61 L 24.66,2.61 L 24.97,7.99 L 29.00,4.41 L 35.59,11.00 L 32.01,15.03 L 37.39,15.34 L 37.39,24.66 L 32.01,24.97 L 35.59,29.00 L 29.00,35.59 L 24.97,32.01 L 24.66,37.39 L 15.34,37.39 L 15.03,32.01 L 11.00,35.59 L 4.41,29.00 L 7.99,24.97 L 2.61,24.66 L 2.61,15.34 L 7.99,15.03 L 4.41,11.00 L 11.00,4.41 L 15.03,7.99 Z M 20,13.5 A 6.5,6.5 0 1 0 20,26.5 A 6.5,6.5 0 1 0 20,13.5 Z"/></svg></span>
+        <span class="settings-menu-text"><b>表示設定</b><small>景品のホーム表示期間などを設定</small></span>
+        <span class="settings-menu-arrow">›</span>
+      </button>
+      <button class="settings-menu-card" type="button" onclick="openSettingsSection('data')">
+        <span class="settings-menu-icon data-menu-icon"><svg viewBox="0 0 40 40" aria-hidden="true">
+          <path class="data-db" d="M8 9.5C8 7.57 13.37 6 20 6s12 1.57 12 3.5S26.63 13 20 13 8 11.43 8 9.5Z"/>
+          <path class="data-db" d="M8 9.5v9C8 20.43 13.37 22 20 22s12-1.57 12-3.5v-9"/>
+          <path class="data-db" d="M8 18.5v9C8 29.43 13.37 31 20 31s12-1.57 12-3.5v-9"/>
+          <path class="data-db-line" d="M13 17.5h14M13 26.5h14"/>
+        </svg></span>
+        <span class="settings-menu-text"><b>データ管理</b><small>バックアップ・復元・データ削除</small></span>
+        <span class="settings-menu-arrow">›</span>
+      </button>
+    </div>`;
+}
+function settingsDisplayPage(){
+  title("表示設定",true);
+  const prize=appSettings.prizePeriods||{};
+  document.getElementById("screen").innerHTML=`
+    <div class="section settings-page">
+      <div class="settings-card">
+        <h2>景品の表示期間</h2>
+        <p class="sub">終了日のない景品をホームの「期間中」に表示する期間を設定します。カレンダーには発売日のみ表示されます。</p>
+        ${["一番くじ","UFOキャッチャー","その他景品"].map(t=>`<div class="settings-row"><label>${t}<small>発売日から表示</small></label><div class="settings-input"><input class="input" type="number" min="1" max="365" id="setting-${t}" value="${esc(prize[t]||30)}"><span>日間</span></div></div>`).join("")}
+        <button class="primary" type="button" onclick="saveSettings()">設定を保存</button>
+      </div>
+    </div>`;
+}
+function settingsDataPage(){
+  title("データ管理",true);
+  document.getElementById("screen").innerHTML=`
+    <div class="section settings-page">
+      <div class="settings-card settings-data-card">
+        <h2>データ管理</h2>
+        <p class="sub">登録したデータのバックアップ・復元・削除を行います。</p>
+        <div class="settings-actions settings-actions-column">
+          <button class="secondary" type="button" onclick="backupData()">データをバックアップ</button>
+          <button class="secondary" type="button" onclick="document.getElementById('restoreFile').click()">データを復元</button>
+          <input id="restoreFile" type="file" accept="application/json,.json" class="hidden" onchange="restoreData(this)">
+          <button class="danger-button" type="button" onclick="deleteAllData()">すべてのデータを削除</button>
+        </div>
+      </div>
+    </div>`;
+}
+function openSettingsSection(section){
+  state.settingsSection=section;
+  // 設定トップへ戻ったあと、さらに元の画面へ戻れるように元のreturnPageは維持
+  state.page=section==='display'?"settingsDisplay":"settingsData";
+  render();
+}
+function saveSettings(){
+  const vals={};
+  ["一番くじ","UFOキャッチャー","その他景品"].forEach(t=>{const n=Math.max(1,Math.min(365,Number(document.getElementById(`setting-${t}`).value)||30));vals[t]=n;});
+  appSettings.prizePeriods=vals;save(KEY.settings,appSettings);alert("設定を保存しました。");
+}
+function backupData(){
+  const data={version:1,exportedAt:new Date().toISOString(),events,products,schedules,settings:appSettings};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`raffle-manager-backup-${localDateKey(new Date())}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function restoreData(input){
+  const file=input.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{try{const d=JSON.parse(reader.result);if(!Array.isArray(d.events)||!Array.isArray(d.products)||!Array.isArray(d.schedules))throw new Error();if(!confirm("バックアップデータで現在のデータを置き換えます。よろしいですか？"))return;events=d.events.map(normalizeEvent);products=d.products;schedules=d.schedules.map(normalizeSchedule);appSettings=Object.assign({prizePeriods:{"一番くじ":30,"UFOキャッチャー":14,"その他景品":30}},d.settings||{});save(KEY.events,events);save(KEY.products,products);save(KEY.schedules,schedules);save(KEY.settings,appSettings);alert("データを復元しました。");render();}catch(e){alert("バックアップファイルを読み込めませんでした。");}finally{input.value="";}};reader.readAsText(file);
+}
+function deleteAllData(){
+  if(!confirm("すべての登録データを削除します。よろしいですか？"))return;
+  if(!confirm("この操作は元に戻せません。本当に削除しますか？"))return;
+  events=[];products=[];schedules=[];save(KEY.events,events);save(KEY.products,products);save(KEY.schedules,schedules);alert("すべてのデータを削除しました。");go("home");
+}
+function openSettings(){state.returnPage=state.page;state.settingsSection=null;state.page="settings";render()}
+window.openSettings=openSettings;window.saveSettings=saveSettings;window.backupData=backupData;window.restoreData=restoreData;window.deleteAllData=deleteAllData;
 function calendar(){
  title("カレンダー");
  const y=state.calendarDate.getFullYear(),m=state.calendarDate.getMonth();
